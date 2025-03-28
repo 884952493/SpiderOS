@@ -213,4 +213,3 @@ put_char:
  .put_char_done: 
    popad
    ret
-    
