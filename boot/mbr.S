@@ -22,24 +22,24 @@ SECTION MBR vstart=0x7c00 ;起始地址编译在0x7c00
 
     		   ;新增功能 直接操作显存部分
     		   ;低位字节储存ascii字符 小端储存内存顺序相反
-    mov byte [gs:0x00],'L' 
+    mov byte [gs:0x00],'S' 
     
     		   ;背景储存在第二个字节 含字符与背景属性
     mov byte [gs:0x01],0xA4    
     
-    mov byte [gs:0x02],'O' 
+    mov byte [gs:0x02],'p' 
     mov byte [gs:0x03],0xA4
     
-    mov byte [gs:0x04],'V' 
+    mov byte [gs:0x04],'i' 
     mov byte [gs:0x05],0xA4
     
-    mov byte [gs:0x06],'E' 
+    mov byte [gs:0x06],'d' 
     mov byte [gs:0x07],0xA4
     
-    mov byte [gs:0x08],'6' 
+    mov byte [gs:0x08],'e' 
     mov byte [gs:0x09],0xA4
     
-    mov byte [gs:0x0A],' ' 
+    mov byte [gs:0x0A],'r' 
     mov byte [gs:0x0B],0xA4
     
     mov byte [gs:0x0C],'O' 
