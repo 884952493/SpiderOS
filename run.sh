@@ -1,1 +1,1 @@
-bochs -f bochsrc.disk
+bochs -f bochsrc.disk -q

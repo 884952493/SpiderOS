@@ -11,6 +11,44 @@
 #define PIC_S_DATA 0xa1	       // 从片的数据端口是0xa1
 
 #define IDT_DESC_CNT 0x21      // 目前总共支持的中断数
+#define EFLAGS_IF 0x00000200   // eflags 寄存器中的 if 位为 1
+
+
+enum intr_status intr_enable()
+{
+    if(intr_get_status() != INTR_ON)
+    {
+    	asm volatile("sti");
+    	return INTR_OFF;
+    }
+    return INTR_ON;
+}
+
+enum intr_status intr_disable()
+{
+    if(intr_get_status() != INTR_OFF)
+    {
+	   	asm volatile("cli");
+	   	return INTR_ON;
+    }
+    return INTR_OFF;
+}
+
+enum intr_status intr_set_status(enum intr_status status)
+{
+    return (status & INTR_ON) ? intr_enable() : intr_disable();
+}
+
+enum intr_status intr_get_status()
+{
+    uint32_t eflags = 0;
+    GET_EFLAGS(eflags);
+    return (eflags & EFLAGS_IF) ? INTR_ON : INTR_OFF; 
+}
+
+
+
+
 
 /*中断门描述符结构体*/
 struct gate_desc {
@@ -142,3 +180,4 @@ void idt_init() {
    asm volatile("lidt %0" : : "m" (idt_operand));
    put_str("idt_init done\n");
 }
+

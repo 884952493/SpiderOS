@@ -12,6 +12,10 @@
 #define __LIB_IO_H
 #include "stdint.h"
 
+/* 读取 eflags 寄存器 */
+#define GET_EFLAGS(EFLAG_VAR) \
+    asm volatile("pushfl; popl %0" : "=g"(EFLAG_VAR))
+
 /* 向端口port写入一个字节*/
 static inline void outb(uint16_t port, uint8_t data) {
 /*********************************************************
