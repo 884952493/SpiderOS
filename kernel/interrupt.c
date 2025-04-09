@@ -1,183 +1,281 @@
+/*
+ * Author: Zhang Xun
+ * Time: 2023-11-22
+ */
 
 #include "interrupt.h"
-#include "stdint.h"
 #include "global.h"
 #include "io.h"
 #include "print.h"
+#include "stdint.h"
 
-#define PIC_M_CTRL 0x20	       // 这里用的可编程中断控制器是8259A,主片的控制端口是0x20
-#define PIC_M_DATA 0x21	       // 主片的数据端口是0x21
-#define PIC_S_CTRL 0xa0	       // 从片的控制端口是0xa0
-#define PIC_S_DATA 0xa1	       // 从片的数据端口是0xa1
+/* CTRL/DATA port of main 8259A chip.*/
+#define PIC_M_CTRL 0x20
+#define PIC_M_DATA 0x21
+/* CTRL/DATA port of slave 8259A chip.*/
+#define PIC_S_CTRL 0xa0
+#define PIC_S_DATA 0xa1
 
-#define IDT_DESC_CNT 0x21      // 目前总共支持的中断数
-#define EFLAGS_IF 0x00000200   // eflags 寄存器中的 if 位为 1
+/* Total number of interrupt descriptors.*/
+#define IDT_DESC_COUNT 0x81
 
+#define EFLAGS_IF 0x00000200
+#define GET_EFLAGS(EFLAGS_VAR) asm volatile("pushfl;popl %0" : "=g"(EFLAGS_VAR))
 
-enum intr_status intr_enable()
-{
-    if(intr_get_status() != INTR_ON)
-    {
-    	asm volatile("sti");
-    	return INTR_OFF;
-    }
-    return INTR_ON;
-}
-
-enum intr_status intr_disable()
-{
-    if(intr_get_status() != INTR_OFF)
-    {
-	   	asm volatile("cli");
-	   	return INTR_ON;
-    }
-    return INTR_OFF;
-}
-
-enum intr_status intr_set_status(enum intr_status status)
-{
-    return (status & INTR_ON) ? intr_enable() : intr_disable();
-}
-
-enum intr_status intr_get_status()
-{
-    uint32_t eflags = 0;
-    GET_EFLAGS(eflags);
-    return (eflags & EFLAGS_IF) ? INTR_ON : INTR_OFF; 
-}
-
-
-
-
-
-/*中断门描述符结构体*/
+/*
+ * struct gate_desc - Interrupt Descriptor Table entry (i.e. gate) struct.
+ * @func_offset_low_word: 0~15 bits of func offset.
+ * @selector: selector for target code segment.
+ * @dcount:  unused part.
+ * @attribute: fields TYPE, S, DPL, P.
+ * @func_offset_high_word: 16~31 bits of func offset.
+ *
+ * 8 bytes in total.
+ */
 struct gate_desc {
-   uint16_t    func_offset_low_word;
-   uint16_t    selector;
-   uint8_t     dcount;   //此项为双字计数字段，是门描述符中的第4字节。此项固定值，不用考虑
-   uint8_t     attribute;
-   uint16_t    func_offset_high_word;
+  /* low 32-bits.*/
+  uint16_t func_offset_low_word;
+  uint16_t selector;
+
+  /* high 32-bits.*/
+  uint8_t dcount;
+  uint8_t attribute;
+  uint16_t func_offset_high_word;
 };
 
-// 静态函数声明,非必须
-static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function);
-static struct gate_desc idt[IDT_DESC_CNT];   // idt是中断描述符表,本质上就是个中断门描述符数组
+/* Interrupt Descriptor Table. */
+static struct gate_desc idt[IDT_DESC_COUNT];
 
+char *intr_name[IDT_DESC_COUNT];
 
-char* intr_name[IDT_DESC_CNT];		     // 用于保存异常的名字
+/* Interrupt handler address table  */
+intr_handler idt_table[IDT_DESC_COUNT];
 
+extern intr_handler intr_entry_table[IDT_DESC_COUNT];
+/* interrupt handler for 'int 0x80', defined in kernel.S  */
+extern uint32_t syscall_handler(void);
 
-/********    定义中断处理程序数组    ********
- * 在kernel.S中定义的intrXXentry只是中断处理程序的入口,
- * 最终调用的是ide_table中的处理程序*/
-intr_handler idt_table[IDT_DESC_CNT];
+/*
+ * pic_init - set main/slave 8259A chips to the correct value, such as setting
+ * the starting value of the interrupt vector number.
+ *
+ * This function set registers ICW1~4 and OCW1~4.
+ */
+static void pic_init() {
+  /* main chip's ICW1 */
+  outb(PIC_M_CTRL, 0x11);
+  /* main chip's ICW2: set the starting interrupt number to 0x20 */
+  outb(PIC_M_DATA, 0x20);
+  /* main chip's ICW3: set IR2 to link the  slave chip */
+  outb(PIC_M_DATA, 0x04);
+  /* main chip's ICW4: set No AEOI, send EOI manually */
+  outb(PIC_M_DATA, 0x01);
 
-/********************************************/
-extern intr_handler intr_entry_table[IDT_DESC_CNT];	    // 声明引用定义在kernel.S中的中断处理函数入口数组
+  /* slave chip's ICW1  */
+  outb(PIC_S_CTRL, 0x11);
+  /* slave chip's ICW2: ... is 0x28 */
+  outb(PIC_S_DATA, 0x28);
+  /* slave chip's ICW3 */
+  outb(PIC_S_DATA, 0x02);
+  /* slave chip's ICW4 */
+  outb(PIC_S_DATA, 0x01);
 
+  /* OCW1 (M/S)  --- enable keyboard interrupt,timer interrupt
+   * and IRQ2 (which connect slave chip). */
+  outb(PIC_M_DATA, 0xf8);
+  /* enable IRQ14 in slave chip  */
+  outb(PIC_S_DATA, 0xbf);
 
-
-
-
-/* 初始化可编程中断控制器8259A */
-static void pic_init(void) {
-
-   /* 初始化主片 */
-   outb (PIC_M_CTRL, 0x11);   // ICW1: 边沿触发,级联8259, 需要ICW4.
-   outb (PIC_M_DATA, 0x20);   // ICW2: 起始中断向量号为0x20,也就是IR[0-7] 为 0x20 ~ 0x27.
-   outb (PIC_M_DATA, 0x04);   // ICW3: IR2接从片. 
-   outb (PIC_M_DATA, 0x01);   // ICW4: 8086模式, 正常EOI
-
-   /* 初始化从片 */
-   outb (PIC_S_CTRL, 0x11);    // ICW1: 边沿触发,级联8259, 需要ICW4.
-   outb (PIC_S_DATA, 0x28);    // ICW2: 起始中断向量号为0x28,也就是IR[8-15] 为 0x28 ~ 0x2F.
-   outb (PIC_S_DATA, 0x02);    // ICW3: 设置从片连接到主片的IR2引脚
-   outb (PIC_S_DATA, 0x01);    // ICW4: 8086模式, 正常EOI
-   
-   outb (PIC_M_DATA, 0xfe);
-   outb (PIC_S_DATA, 0xff);
-
-   put_str("   pic_init done\n");
+  put_str("  pic_init done\n");
 }
 
-/* 创建中断门描述符 */
-static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function) { 
-   p_gdesc->func_offset_low_word = (uint32_t)function & 0x0000FFFF;
-   p_gdesc->selector = SELECTOR_K_CODE;
-   p_gdesc->dcount = 0;
-   p_gdesc->attribute = attr;
-   p_gdesc->func_offset_high_word = ((uint32_t)function & 0xFFFF0000) >> 16;
+/*
+ *  make_idt_desc - construct interrupt descriptor
+ *  @pt_gdesc: interrupt gate descriptor point
+ *  @attr: descriptor attribute
+ *  @function: address of interrupt handler
+ *
+ *  This function write attr and function into descriptor pointed by pt_gdesc.
+ */
+static void make_idt_desc(struct gate_desc *pt_gdesc, uint8_t attr,
+                          intr_handler function) {
+  pt_gdesc->func_offset_low_word = (uint32_t)function & 0x0000FFFF;
+  pt_gdesc->selector = SELECTOR_KERNEL_CODE;
+  pt_gdesc->dcount = 0;
+  pt_gdesc->attribute = attr;
+  pt_gdesc->func_offset_high_word = ((uint32_t)function & 0xFFFF0000) >> 16;
 }
 
-/*初始化中断描述符表*/
-static void idt_desc_init(void) {
-   int i, lastindex = IDT_DESC_CNT - 1;
-   for (i = 0; i < IDT_DESC_CNT; i++) {
-      make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]); 
-   }
-/* 单独处理系统调用,系统调用对应的中断门dpl为3,
- * 中断处理程序为单独的syscall_handler */
-   put_str("   idt_desc_init done\n");
+/*
+ * idt_desc_init - initialize interrupt descriptor table
+ *
+ * This function populate the interrupt descriptor entry for IDT by calling
+ * function make_idt_desc.
+ */
+static void idt_desc_init() {
+  int i;
+  for (i = 0; i < IDT_DESC_COUNT; ++i) {
+    make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
+  }
+
+  /* make ide desc for interrupt 'int 0x80'  */
+  int lastindex = IDT_DESC_COUNT - 1;
+  make_idt_desc(&idt[lastindex], IDT_DESC_ATTR_DPL3, syscall_handler);
+  put_str("  idt_desc_init done\n");
 }
 
-
-
-/* 通用的中断处理函数,一般用在异常出现时的处理 */
+/**
+ * general_intr_handler - print the interrupt vector number
+ * @vec_nr: vector number to be printed
+ *
+ * This function is default interrupt handler for all interrupts.
+ */
 static void general_intr_handler(uint8_t vec_nr) {
-   if (vec_nr == 0x27 || vec_nr == 0x2f) {	// 0x2f是从片8259A上的最后一个irq引脚，保留
-      return;		//IRQ7和IRQ15会产生伪中断(spurious interrupt),无须处理。
-   }
-   put_str("int vector : 0x");
-   put_int(vec_nr);
-   put_char('\n');	
+  /* ignore spurious(fake) interrupt */
+  if (vec_nr == 0x27 || vec_nr == 0x2f)
+    return;
+
+  set_cursor(0);
+  int cursor_pos = 0;
+  while (cursor_pos < 320) {
+    put_char(' ');
+    ++cursor_pos;
+  }
+  set_cursor(0);
+  put_str("!!!!!!      exception message begin      !!!!!!\n");
+  set_cursor(88);
+  put_str(intr_name[vec_nr]);
+  if (vec_nr == 14) {
+    uint32_t page_fault_vaddr;
+    asm volatile("movl %%cr2,%0" : "=r"(page_fault_vaddr));
+    put_str("\npage fault addr is ");
+    put_int(page_fault_vaddr);
+  }
+  put_str("\n!!!!!!      exception message end      !!!!!!\n");
+  while (1)
+    ;
 }
 
-
-/* 完成一般中断处理函数注册及异常名称注册 */
-static void exception_init(void) {			    // 完成一般中断处理函数注册及异常名称注册
-   int i;
-   for (i = 0; i < IDT_DESC_CNT; i++) {
-
-/* idt_table数组中的函数是在进入中断后根据中断向量号调用的,
- * 见kernel/kernel.S的call [idt_table + %1*4] */
-      idt_table[i] = general_intr_handler;		    // 默认为general_intr_handler。
-							    // 以后会由register_handler来注册具体处理函数。
-      intr_name[i] = "unknown";				    // 先统一赋值为unknown 
-   }
-   intr_name[0] = "#DE Divide Error";
-   intr_name[1] = "#DB Debug Exception";
-   intr_name[2] = "NMI Interrupt";
-   intr_name[3] = "#BP Breakpoint Exception";
-   intr_name[4] = "#OF Overflow Exception";
-   intr_name[5] = "#BR BOUND Range Exceeded Exception";
-   intr_name[6] = "#UD Invalid Opcode Exception";
-   intr_name[7] = "#NM Device Not Available Exception";
-   intr_name[8] = "#DF Double Fault Exception";
-   intr_name[9] = "Coprocessor Segment Overrun";
-   intr_name[10] = "#TS Invalid TSS Exception";
-   intr_name[11] = "#NP Segment Not Present";
-   intr_name[12] = "#SS Stack Fault Exception";
-   intr_name[13] = "#GP General Protection Exception";
-   intr_name[14] = "#PF Page-Fault Exception";
-   // intr_name[15] 第15项是intel保留项，未使用
-   intr_name[16] = "#MF x87 FPU Floating-Point Error";
-   intr_name[17] = "#AC Alignment Check Exception";
-   intr_name[18] = "#MC Machine-Check Exception";
-   intr_name[19] = "#XF SIMD Floating-Point Exception";
-
+void register_handler(uint8_t vec_nr, intr_handler function) {
+  idt_table[vec_nr] = function;
 }
 
+/**
+ * exception_init - initialize idt-table
+ *
+ * This function sets the default interrupt handler function for all
+ * interrupts to general_intr_handler.
+ */
+static void exception_init() {
+  int i;
+  for (i = 0; i < IDT_DESC_COUNT; ++i) {
+    idt_table[i] = general_intr_handler;
+    intr_name[i] = "unknown";
+  }
 
-/*完成有关中断的所有初始化工作*/
+  intr_name[0] = "#DE Divide Error";
+  intr_name[1] = "#DB Debug";
+  intr_name[2] = "NMI Interrupt";
+  intr_name[3] = "#BP BreakPoint";
+  intr_name[4] = "#OF Overflow";
+  intr_name[5] = "#BR BOUND Range Exceeded";
+  intr_name[6] = "#UD Undefined Opcode";
+  intr_name[7] = "#NM Device Not Available";
+  intr_name[8] = "#DF Double Fault";
+  intr_name[9] = "#MF CoProcessor Segment Overrun";
+  intr_name[10] = "#TS Invalid TSS";
+  intr_name[11] = "#NP Segment Not Present";
+  intr_name[12] = "#SS Stack Segment Fault";
+  intr_name[13] = "#GP General  Protection";
+  intr_name[14] = "#PF Page Fault";
+  intr_name[16] = "#MF x87 FPU Floating-Point Error";
+  intr_name[17] = "#AC Alignment Check";
+  intr_name[18] = "#MC Machine Check";
+  intr_name[19] = "#XM SIMD Floating-Point Exception";
+  intr_name[20] = "Clock Interrupt";
+  intr_name[21] = "Keyboard Interrupt";
+}
+
+/*
+ * idt-init - initialize IDT and interrupt agent 8259A chips
+ *
+ * This function completes the initialization of IDT and chips by calling
+ * idt_desc_init and pic_init.
+ */
 void idt_init() {
-   put_str("idt_init start\n");
-   idt_desc_init();	   // 初始化中断描述符表
-   exception_init();	   // 异常名初始化并注册通常的中断处理函数
-   pic_init();		   // 初始化8259A
+  put_str("idt_init start\n");
 
-   /* 加载idt */
-   uint64_t idt_operand = ((sizeof(idt) - 1) | ((uint64_t)(uint32_t)idt << 16));
-   asm volatile("lidt %0" : : "m" (idt_operand));
-   put_str("idt_init done\n");
+  idt_desc_init();
+  exception_init();
+  pic_init();
+
+  /*
+   * load the address of IDT into IDTR.
+   *
+   * the 2 conversions to 32-bit pointers here are to avoid incorrect sign
+   * extension.
+   */
+  uint64_t idt_operand = ((sizeof(idt) - 1) | ((uint64_t)(uint32_t)idt << 16));
+  asm volatile("lidt %0" ::"m"(idt_operand));
+
+  put_str("idt_init done\n");
 }
 
+/**
+ * intr_get_status - Get current interrupt status by checking flag IF
+ *
+ * Return: interrupt status. The relevant enumeration variables are defined in
+ * interrupt.h.
+ */
+enum intr_status intr_get_status() {
+  uint32_t eflags = 0;
+  GET_EFLAGS(eflags);
+  return (EFLAGS_IF & eflags) ? INTR_ON : INTR_OFF;
+}
+
+/**
+ * intr_enable - enable interrupt
+ *
+ * This function uses the `std` instruction to set the bit "if" in the eflag
+ * register to 1.
+ *
+ * Return: old interrupt status.
+ */
+enum intr_status intr_enable() {
+  enum intr_status old_status;
+  if (INTR_ON == intr_get_status()) {
+    old_status = INTR_ON;
+  } else {
+    old_status = INTR_OFF;
+    asm volatile("sti");
+  }
+  return old_status;
+}
+
+/**
+ * intr_disable - disable interrupt
+ *
+ * This function uses the `cli` instruction to set the bit "if" in the eflag
+ * register to 0.
+ *
+ * Return: old interrupt status.
+ */
+enum intr_status intr_disable() {
+  enum intr_status old_status;
+  if (INTR_ON == intr_get_status()) {
+    old_status = INTR_ON;
+    asm volatile("cli" : : : "memory");
+  } else {
+    old_status = INTR_OFF;
+  }
+  return old_status;
+}
+/**
+ * intr_set_status - set interrupt status to the value of parameter status
+ * @status: the interrupt status to set.
+ *
+ * Return: old interrupt status
+ */
+enum intr_status intr_set_status(enum intr_status status) {
+  return status & INTR_ON ? intr_enable() : intr_disable();
+}

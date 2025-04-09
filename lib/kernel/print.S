@@ -1,215 +1,356 @@
-TI_GDT equ  0
-RPL0  equ   0
+;------------------------
+; Author: Zhang Xun |
+; Time: 2023-11-09 |
+;------------------------
+[bits 32]
+section .data
+put_int_buffer dq 0
+
+section .text
+; ============================================================
+; Function put_char: Print a character from the stack at the cursor
+; ============================================================
+; video selector attribute
+TI_GDT equ 0
+RPL0 equ 0
 SELECTOR_VIDEO equ (0x0003<<3) + TI_GDT + RPL0
 
-section .data
-put_int_buffer    dq    0     ; 定义8字节缓冲区用于数字到字符的转换
-
-[bits 32]
-section .text
-;--------------------------------------------
-;put_str 通过put_char来打印以0字符结尾的字符串
-;--------------------------------------------
-global put_str
-put_str:
-;由于本函数中只用到了ebx和ecx,只备份这两个寄存器
-   push ebx
-   push ecx
-   xor ecx, ecx		      ; 准备用ecx存储参数,清空
-   mov ebx, [esp + 12]	      ; 从栈中得到待打印的字符串地址 
-.goon:
-   mov cl, [ebx]
-   cmp cl, 0		      ; 如果处理到了字符串尾,跳到结束处返回
-   jz .str_over
-   push ecx		      ; 为put_char函数传递参数
-   call put_char
-   add esp, 4		      ; 回收参数所占的栈空间
-   inc ebx		      ; 使ebx指向下一个字符
-   jmp .goon
-.str_over:
-   pop ecx
-   pop ebx
-   ret
-
-
-;--------------------   将小端字节序的数字变成对应的ascii后，倒置   -----------------------
-;输入：栈中参数为待打印的数字
-;输出：在屏幕上打印16进制数字,并不会打印前缀0x,如打印10进制15时，只会直接打印f，不会是0xf
-;------------------------------------------------------------------------------------------
-global put_int
-put_int:
-   pushad
-   mov ebp, esp
-   mov eax, [ebp+4*9]		       ; call的返回地址占4字节+pushad的8个4字节
-   mov edx, eax
-   mov edi, 7                          ; 指定在put_int_buffer中初始的偏移量
-   mov ecx, 8			       ; 32位数字中,16进制数字的位数是8个
-   mov ebx, put_int_buffer
-
-;将32位数字按照16进制的形式从低位到高位逐个处理,共处理8个16进制数字
-.16based_4bits:			       ; 每4位二进制是16进制数字的1位,遍历每一位16进制数字
-   and edx, 0x0000000F		       ; 解析16进制数字的每一位。and与操作后,edx只有低4位有效
-   cmp edx, 9			       ; 数字0～9和a~f需要分别处理成对应的字符
-   jg .is_A2F 
-   add edx, '0'			       ; ascii码是8位大小。add求和操作后,edx低8位有效。
-   jmp .store
-.is_A2F:
-   sub edx, 10			       ; A~F 减去10 所得到的差,再加上字符A的ascii码,便是A~F对应的ascii码
-   add edx, 'A'
-
-;将每一位数字转换成对应的字符后,按照类似“大端”的顺序存储到缓冲区put_int_buffer
-;高位字符放在低地址,低位字符要放在高地址,这样和大端字节序类似,只不过咱们这里是字符序.
-.store:
-; 此时dl中应该是数字对应的字符的ascii码
-   mov [ebx+edi], dl		       
-   dec edi
-   shr eax, 4
-   mov edx, eax 
-   loop .16based_4bits
-
-;现在put_int_buffer中已全是字符,打印之前,
-;把高位连续的字符去掉,比如把字符000123变成123
-.ready_to_print:
-   inc edi			       ; 此时edi退减为-1(0xffffffff),加1使其为0
-.skip_prefix_0:  
-   cmp edi,8			       ; 若已经比较第9个字符了，表示待打印的字符串为全0 
-   je .full0 
-;找出连续的0字符, edi做为非0的最高位字符的偏移
-.go_on_skip:   
-   mov cl, [put_int_buffer+edi]
-   inc edi
-   cmp cl, '0' 
-   je .skip_prefix_0		       ; 继续判断下一位字符是否为字符0(不是数字0)
-   dec edi			       ;edi在上面的inc操作中指向了下一个字符,若当前字符不为'0',要恢复edi指向当前字符		       
-   jmp .put_each_num
-
-.full0:
-   mov cl,'0'			       ; 输入的数字为全0时，则只打印0
-.put_each_num:
-   push ecx			       ; 此时cl中为可打印的字符
-   call put_char
-   add esp, 4
-   inc edi			       ; 使edi指向下一个字符
-   mov cl, [put_int_buffer+edi]	       ; 获取下一个字符到cl寄存器
-   cmp edi,8
-   jl .put_each_num
-   popad
-   ret
-
-;------------------------   put_char   -----------------------------
-;功能描述:把栈中的1个字符写入光标所在处
-;-------------------------------------------------------------------   
 global put_char
 put_char:
-   pushad	   ;备份32位寄存器环境
-   ;需要保证gs中为正确的视频段选择子,为保险起见,每次打印时都为gs赋值
-   mov ax, SELECTOR_VIDEO	       ; 不能直接把立即数送入段寄存器
-   mov gs, ax
+;------------------------
+; backup registers
+; push all double word register (such as eax,ecx,...)
+;------------------------
+pushad
 
-;;;;;;;;;  获取当前光标位置 ;;;;;;;;;
-   ;先获得高8位
-   mov dx, 0x03d4  ;索引寄存器
-   mov al, 0x0e	   ;用于提供光标位置的高8位
-   out dx, al
-   mov dx, 0x03d5  ;通过读写数据端口0x3d5来获得或设置光标位置 
-   in al, dx	   ;得到了光标位置的高8位
-   mov ah, al
+;------------------------
+; set video memory selector
+;------------------------
+mov ax, SELECTOR_VIDEO
+mov gs, ax
 
-   ;再获取低8位
-   mov dx, 0x03d4
-   mov al, 0x0f
-   out dx, al
-   mov dx, 0x03d5 
-   in al, dx
+;------------------------
+; get the cursor position (16 bits) from the graphics card's register
+;------------------------
+; high 8 bits
+mov dx, 0x03d4
+mov al, 0x0e
+out dx, al
+mov dx, 0x03d5
+in al, dx
+mov ah, al
+; low 8 bits
+; specify index value in Address Register
+mov dx, 0x03d4
+mov al, 0x0f
+out dx, al
+; retrieve data from Data Register , which represents the register corresponding to the index in Address Register
+mov dx, 0x03d5
+in al, dx
+; Now register bx stores the (linear) coordinates of the cursor
+mov bx, ax
 
-   ;将光标存入bx
-   mov bx, ax	  
-   ;下面这行是在栈中获取待打印的字符
-   mov ecx, [esp + 36]	      ;pushad压入4×8＝32字节,加上主调函数的返回地址4字节,故esp+36字节
-   cmp cl, 0xd				  ;CR是0x0d,LF是0x0a
-   jz .is_carriage_return
-   cmp cl, 0xa
-   jz .is_line_feed
+;------------------------
+; retrieve the character to be printed
+;------------------------
+; 32 bytes of register space + 4 bytes of caller return address
+mov ecx, [esp+36]
 
-   cmp cl, 0x8				  ;BS(backspace)的asc码是8
-   jz .is_backspace
-   jmp .put_other	   
-;;;;;;;;;;;;;;;;;;
+;------------------------
+; Process the characters to be printed --- do special processing for control characters, and print ordinary visible characters. If the visible characters exceed the screen (cmp bx, 2000), add a carriage return processing operation
+;------------------------
+cmp cl, 0xd
+jz .is_carriage_return
+cmp cl, 0xa
+jz .is_line_feed
+cmp cl, 0x8
+jz .is_backspace
+jmp .put_other
 
- .is_backspace:		      
-;;;;;;;;;;;;       backspace的一点说明	     ;;;;;;;;;;
-; 当为backspace时,本质上只要将光标移向前一个显存位置即可.后面再输入的字符自然会覆盖此处的字符
-; 但有可能在键入backspace后并不再键入新的字符,这时在光标已经向前移动到待删除的字符位置,但字符还在原处,
-; 这就显得好怪异,所以此处添加了空格或空字符0
-   dec bx
-   shl bx,1
-   mov byte [gs:bx], 0x20		  ;将待删除的字节补为0或空格皆可
-   inc bx
-   mov byte [gs:bx], 0x07
-   shr bx,1
-   jmp .set_cursor
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.is_backspace:
+dec bx
+; The cursor is the coordinate of the character, and a character occupies 2 bytes, so to write to the video memory through the cursor, the cursor needs x2
+; bx: the cursor position ---> the position in the video memory
+shl bx, 1
 
- .put_other:
-   shl bx, 1				  ; 光标位置是用2字节表示,将光标值乘2,表示对应显存中的偏移字节
-   mov [gs:bx], cl			  ; ascii字符本身
-   inc bx
-   mov byte [gs:bx],0x07		  ; 字符属性
-   shr bx, 1				  ; 恢复老的光标值
-   inc bx				  ; 下一个光标值
-   cmp bx, 2000		   
-   jl .set_cursor			  ; 若光标值小于2000,表示未写到显存的最后,则去设置新的光标值
-					  ; 若超出屏幕字符数大小(2000)则换行处理
- .is_line_feed:				  ; 是换行符LF(\n)
- .is_carriage_return:			  ; 是回车符CR(\r)
-					  ; 如果是CR(\r),只要把光标移到行首就行了。
-   xor dx, dx				  ; dx是被除数的高16位,清0.
-   mov ax, bx				  ; ax是被除数的低16位.
-   mov si, 80				  ; 由于是效仿linux，linux中\n便表示下一行的行首，所以本系统中，
-   div si				  ; 把\n和\r都处理为linux中\n的意思，也就是下一行的行首。
-   sub bx, dx				  ; 光标值减去除80的余数便是取整
-					  ; 以上4行处理\r的代码
+mov byte [gs:bx], 0x20
+inc bx
+mov byte [gs:bx], 0x07
+; restore the bx value (the position of cursor)
+; bx: the position in the video memory ---> the cursor position
+shr bx, 1
+jmp .set_cursor
 
- .is_carriage_return_end:                 ; 回车符CR处理结束
-   add bx, 80
-   cmp bx, 2000
- .is_line_feed_end:			  ; 若是LF(\n),将光标移+80便可。  
-   jl .set_cursor
+.put_other:
+shl bx, 1
+mov [gs:bx], cl
+inc bx
+mov byte [gs:bx], 0x07
+shr bx, 1
+inc bx
+cmp bx, 2000
+jl .set_cursor
 
-;屏幕行范围是0~24,滚屏的原理是将屏幕的1~24行搬运到0~23行,再将第24行用空格填充
- .roll_screen:				  ; 若超出屏幕大小，开始滚屏
-   cld  
-   mov ecx, 960				  ; 一共有2000-80=1920个字符要搬运,共1920*2=3840字节.一次搬4字节,共3840/4=960次 
-   mov esi, 0xc00b80a0			  ; 第1行行首
-   mov edi, 0xc00b8000			  ; 第0行行首
-   rep movsd				  
+; \n --- moves the cursor to the beginning of the next line
+.is_line_feed:
+; \r --- moves the cursor to the beginning of the same line
+; actually I treat \r like \n
+.is_carriage_return:
+; 16-bit division
+xor dx, dx
+mov ax, bx
+mov si, 80
+div si
+; let bx (cursor) be the first coordinate of the line (carriage return done!)
+sub bx, dx
+; let bx (cursor) be the first coordinate of the next line (line feed done!)
+add bx, 80
+; if the cursor exceeds the screen (the result of instruction jl will be false), scroll the srceen
+cmp bx, 2000
+jl .set_cursor
 
-;;;;;;;将最后一行填充为空白
-   mov ebx, 3840			  ; 最后一行首字符的第一个字节偏移= 1920 * 2
-   mov ecx, 80				  ;一行是80字符(160字节),每次清理1字符(2字节),一行需要移动80次
- .cls:
-   mov word [gs:ebx], 0x0720		  ;0x0720是黑底白字的空格键
-   add ebx, 2
-   loop .cls 
-   mov bx,1920				  ;将光标值重置为1920,最后一行的首字符.
+;------------------------
+; roll_screen for 2 reasons:
+; 1.The cursor value exceeds the maximum number of characters on a screen (1999)
+; 2.There is a newline character on the last line of the screen
+;
+; the task that moving the cursor (bx, actually) has been completed in processing the carriage return character
+;------------------------
+.roll_screen:
+; Cover lines 0~23 with lines 1~24
+cld
+; ((2000-80)*2)/4=960
+mov ecx, 960
+mov esi, 0xc00b80a0 ; beginning of line 0
+mov edi, 0xc00b8000 ; beginning of line 1
+; mov 4 bytes (double word) each time
+rep movsd
 
- .set_cursor:   
-					  ;将光标设为bx值
-;;;;;;; 1 先设置高8位 ;;;;;;;;
-   mov dx, 0x03d4			  ;索引寄存器
-   mov al, 0x0e				  ;用于提供光标位置的高8位
-   out dx, al
-   mov dx, 0x03d5			  ;通过读写数据端口0x3d5来获得或设置光标位置 
-   mov al, bh
-   out dx, al
+; clear the last line in current screen by filling with whitespace (0x0720)
+; 1920*2 = 3840
+mov ebx, 3840
+mov ecx, 80
+.cls:
+mov word [gs:ebx], 0x0720
+add ebx, 2
+loop .cls
+; update cursor position info --- beginning of the last line
+mov bx, 1920
 
-;;;;;;; 2 再设置低8位 ;;;;;;;;;
-   mov dx, 0x03d4
-   mov al, 0x0f
-   out dx, al
-   mov dx, 0x03d5 
-   mov al, bl
-   out dx, al
- .put_char_done: 
-   popad
-   ret
+;------------------------
+; Update cursor position info in graphics card
+;------------------------
+.set_cursor:
+; set high 8 bits
+mov dx, 0x03d4
+mov al, 0x0e
+out dx, al
+
+mov dx, 0x03d5
+mov al, bh
+out dx, al
+
+; set low 8 bits
+mov dx, 0x03d4
+mov al, 0x0f
+out dx, al
+
+mov dx, 0x03d5
+mov al, bl
+out dx, al
+
+.put_char_end:
+popad
+ret
+
+; ============================================================
+; Function put_str: Print string at the cursor
+; ============================================================
+global put_str
+put_str:
+;------------------------
+; backup registers
+;------------------------
+push ebx
+push ecx
+
+;------------------------
+; , prepare the parameters (the starting address of the string) here
+;------------------------
+xor ecx, ecx
+; 8 bytes of the backup register + 4 bytes of caller return address
+mov ebx, [esp+12]
+
+;------------------------
+; Implement the function by calling put_char
+;------------------------
+.impl:
+mov cl, [ebx]
+
+; Determine whether the string ends
+cmp cl, 0
+jz .str_over
+
+push ecx
+call put_char
+add esp, 4
+inc ebx
+loop .impl
+
+.str_over:
+pop ecx
+pop ebx
+ret
+
+; ============================================================
+; Function put_int: Print integer at the cursor
+; Implement: Convert every 4 digits of a 32-bit number (i.e. a hexadecimal number) into corresponding characters
+; eg: 0x0012345 --> '0x12345'
+; ============================================================
+;------------------------
+; put_int_buffer serves as a buffer to store the converted results.
+;------------------------
+global put_int
+put_int:
+pushad
+mov ebp, esp
+
+;jmp $
+; the number to be printed stored in register eax
+; 32 bytes of register + 4 bytes of caller return address
+mov eax, [ebp+36]
+mov edx, eax
+
+; edi point to the last byte in buffer
+; ecx represents the number of numbers to be processed
+mov edi, 7
+mov ecx, 8
+; ebx represents the base address of the buffer (32bits/4bits = 8)
+mov ebx, put_int_buffer
+
+;------------------------
+; Convert characters (each 4-bits in 32-bits number) to corresponding ASCII value
+;------------------------
+.to_char_each_4_bits:
+and edx, 0x0000000F
+cmp edx, 9
+jg .is_A2F
+add edx, '0'
+jmp .store
+.is_A2F:
+sub edx, 10
+add edx, 'A'
+
+;------------------------
+; remove prefix 0
+; eg: 0x00000012 ---> 0x12
+;------------------------
+.store:
+mov [ebx+edi], dl
+dec edi
+shr eax, 4
+mov edx, eax
+loop .to_char_each_4_bits
+
+.ready_to_print:
+; -1 (0xffffffff) +1 = 0
+inc edi
+
+; while(num != 0) {}
+.skip_prefix_0:
+; If 0 (4-bits), then check whether the number to be printed is 0 ( 32-bits )
+cmp edi, 8
+je .num_is_0
+
+.detect_prefix_0:
+mov cl, [put_int_buffer+edi]
+inc edi
+cmp cl, '0'
+je  .skip_prefix_0
+dec edi
+jmp .put_each_num
+
+.num_is_0:
+; the number to be printed is zero
+mov cl, '0'
+
+;------------------------
+; print characters in buffer
+;------------------------
+.put_each_num:
+push ecx
+call put_char
+add esp, 4
+inc edi
+mov cl, [put_int_buffer+edi]
+cmp edi, 8
+jl .put_each_num
+popad
+ret
+
+global set_cursor
+set_cursor:
+pushad
+; 32 bytes of 8 registers and 4 bytes of return address
+mov bx, [esp+36]
+; set high 8 bits
+mov dx, 0x03d4
+mov al, 0x0e
+out dx, al
+
+mov dx, 0x03d5
+mov al, bh
+out dx, al
+
+; set low 8 bits
+mov dx, 0x03d4
+mov al, 0x0f
+out dx, al
+
+mov dx, 0x03d5
+mov al, bl
+out dx, al
+
+popad
+ret
+
+global sys_clear
+sys_clear:
+pushad
+mov ax, SELECTOR_VIDEO
+mov gs, ax
+
+mov ebx, 0
+mov ecx, 80*25
+
+.cls:
+mov word [gs:ebx],0x0720
+add ebx, 2
+loop .cls
+
+mov ebx, 0
+
+.set_cursor:
+; set high 8 bits
+mov dx, 0x03d4
+mov al, 0x0e
+out dx, al
+
+mov dx, 0x03d5
+mov al, bh
+out dx, al
+
+; set low 8 bits
+mov dx, 0x03d4
+mov al, 0x0f
+out dx, al
+
+mov dx, 0x03d5
+mov al, bl
+out dx, al
+
+.put_char_end:
+popad
+ret
+
+

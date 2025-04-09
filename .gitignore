@@ -1,0 +1,10 @@
+*.o
+*.bin
+*.elf
+*.swap
+G*
+build
+compile_commands.json
+.cache
+.clang-format
+

@@ -1,83 +1,162 @@
+;------------------------
+; Author: Zhang Xun |
+; Time: 2023-11-22 |
+;------------------------
+
+; ============================================================
+; Define interrupt handler
+; ============================================================
 [bits 32]
-%define ERROR_CODE nop		 ; 若在相关的异常中cpu已经自动压入了错误码,为保持栈中格式统一,这里不做操作.
-%define ZERO push 0		 ; 若在相关的异常中cpu没有压入错误码,为了统一栈中格式,就手工压入一个0
+;------------------------
+; Pushing 4 bytes of 0 when there is no ERROR CODE for interrupt.
+; The intention is to unfiy stack operation.
+; When cpu execute iret, ESP must point to EIP.
+;------------------------
+%define ERROR_CODE nop
+%define ZERO push 0
 
-extern put_str;
-extern idt_table;
+extern idt_table
 
+;------------------------
+; Entrance Address array for interrupt handler
+;------------------------
 section .data
 global intr_entry_table
 intr_entry_table:
 
+;------------------------
+; macro function VECTOR - call interrupt handler (which defined in C file) in the body
+;------------------------
 %macro VECTOR 2
 section .text
-intr%1entry:		 ; 每个中断处理程序都要压入中断向量号,所以一个中断类型一个中断处理程序，自己知道自己的中断向量号是多少
+intr_%1_entry:
+; here maybe push 0 or nop. This instuctor must be executed first
+; see P.323 for details
+%2
 
-   %2				 ; 中断若有错误码会压在eip后面 
-; 以下是保存上下文环境
-   push ds
-   push es
-   push fs
-   push gs
-   pushad			 ; PUSHAD指令压入32位寄存器,其入栈顺序是: EAX,ECX,EDX,EBX,ESP,EBP,ESI,EDI
+; The C function (real interrupt handler) is about to be called
+; so the current register environment needs to be protect
+push ds
+push es
+push fs
+push gs
+pushad
 
-   ; 如果是从片上进入的中断,除了往从片上发送EOI外,还要往主片上发送EOI 
-   mov al,0x20                   ; 中断结束命令EOI
-   out 0xa0,al                   ; 向从片发送
-   out 0x20,al                   ; 向主片发送
+; send EOI signal to interrupt agent
+mov al,0x20
+out 0xa0,al
+out 0x20,al
 
-   push %1			 ; 不管idt_table中的目标程序是否需要参数,都一律压入中断向量号,调试时很方便
-   call [idt_table + %1*4]       ; 调用idt_table中的C版本中断处理函数
-   jmp intr_exit
-	
+; For debugging, %1 is vector number
+push %1
+
+; call real interrupt handler
+call [idt_table + %1*4]
+jmp intr_exit
+
+; store the entry address of the interrupt handler
 section .data
-   dd    intr%1entry	 ; 存储各个中断入口程序的地址，形成intr_entry_table数组
+dd intr_%1_entry
+
 %endmacro
 
 section .text
 global intr_exit
-intr_exit:	     
-; 以下是恢复上下文环境
-   add esp, 4			   ; 跳过中断号
-   popad
-   pop gs
-   pop fs
-   pop es
-   pop ds
-   add esp, 4			   ; 跳过error_code
-   iretd
+intr_exit:
+; skip interrupt vector number
+add esp,4
+popad
+pop gs
+pop fs
+pop es
+pop ds
+
+; skip error_code
+add esp,4
+iretd
+
+;------------------------
+; Call macro function, pass two arguments.
+; If the interrupt event does not push ERROR CODE onto the stack, pass the argument zero; which represent push 4 bytes of 0.
+;
+; The lowest usable interrupt vector number for OS kernel is 32 (numbered starting from ;0), so a total of 33 interrupts is defined here
+;------------------------
+VECTOR 0X00, ZERO
+VECTOR 0X01, ZERO
+VECTOR 0X02, ZERO
+VECTOR 0X03, ZERO
+VECTOR 0X04, ZERO
+VECTOR 0X05, ZERO
+VECTOR 0X06, ZERO
+VECTOR 0X07, ZERO
+VECTOR 0X08, ERROR_CODE
+VECTOR 0X09, ZERO
+VECTOR 0X0a, ERROR_CODE
+VECTOR 0X0b, ERROR_CODE
+VECTOR 0X0c, ERROR_CODE
+VECTOR 0X0d, ERROR_CODE
+VECTOR 0X0e, ERROR_CODE
+VECTOR 0X0f, ZERO
+VECTOR 0X10, ZERO
+VECTOR 0X11, ERROR_CODE
+VECTOR 0X12, ZERO
+VECTOR 0X13, ZERO
+VECTOR 0X14, ZERO
+VECTOR 0X15, ZERO
+VECTOR 0X16, ZERO
+VECTOR 0X17, ZERO
+VECTOR 0X18, ZERO
+VECTOR 0X19, ZERO
+VECTOR 0X1a, ZERO
+VECTOR 0X1b, ZERO
+VECTOR 0X1c, ZERO
+VECTOR 0X1d, ZERO
+VECTOR 0X1e, ERROR_CODE
+VECTOR 0X1f, ZERO
+VECTOR 0X20, ZERO ; IR0 --- clock interrupt
+VECTOR 0X21, ZERO ; IR1 --- keyboard interrupt
+VECTOR 0X22, ZERO
+VECTOR 0X23, ZERO
+VECTOR 0X24, ZERO
+VECTOR 0X25, ZERO
+VECTOR 0X26, ZERO
+VECTOR 0X27, ZERO
+VECTOR 0X28, ZERO
+VECTOR 0X29, ZERO
+VECTOR 0X2a, ZERO
+VECTOR 0X2b, ZERO
+VECTOR 0X2c, ZERO
+VECTOR 0X2d, ZERO
+VECTOR 0X2e, ZERO
+VECTOR 0X2f, ZERO
+
+;------------------------ 0x80 interrupt------------------------
+[bits 32]
+extern syscall_table
+section .text
+global syscall_handler
+syscall_handler:
+push 0
+push ds
+push es
+push fs
+push gs
+pushad
+
+push 0x80
+
+push edx
+push ecx
+push ebx
+
+call [syscall_table+4*eax]
+; skip over 3 parameter in the stack
+add esp,12
+
+; esp+(8)*4 is the place that eax restore from
+; 8 is one byte of `push 0x80` plus 7 bytes of `pushad`
+mov [esp+8*4], eax
+jmp intr_exit
 
 
-VECTOR 0x0 ,ZERO
-VECTOR 0X1 ,ZERO
-VECTOR 0X2 ,ZERO
-VECTOR 0x3 ,ZERO
-VECTOR 0X4 ,ZERO
-VECTOR 0X5 ,ZERO
-VECTOR 0x6 ,ZERO
-VECTOR 0X7 ,ZERO
-VECTOR 0X8 ,ERROR_CODE
-VECTOR 0x9 ,ZERO
-VECTOR 0XA ,ERROR_CODE
-VECTOR 0XB ,ERROR_CODE
-VECTOR 0XC ,ERROR_CODE
-VECTOR 0XD ,ERROR_CODE
-VECTOR 0XE ,ERROR_CODE
-VECTOR 0XF ,ZERO
-VECTOR 0X10 ,ZERO
-VECTOR 0X11 ,ERROR_CODE
-VECTOR 0x12 ,ZERO
-VECTOR 0X13 ,ZERO
-VECTOR 0X14 ,ZERO
-VECTOR 0x15 ,ZERO
-VECTOR 0X16 ,ZERO
-VECTOR 0X17 ,ZERO
-VECTOR 0X18 ,ZERO
-VECTOR 0X19 ,ZERO
-VECTOR 0X1A ,ZERO
-VECTOR 0X1B ,ZERO
-VECTOR 0X1C ,ZERO
-VECTOR 0X1D ,ZERO
-VECTOR 0X1E ,ERROR_CODE                               ;处理器自动推错误码
-VECTOR 0X1F ,ZERO
-VECTOR 0X20 ,ZERO
+
