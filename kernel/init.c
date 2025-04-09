@@ -10,4 +10,6 @@ void init_all() {
    idt_init();	     // 初始化中断
    mem_init();
    timer_init();
+   thread_init();
+
 }

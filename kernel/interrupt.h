@@ -3,6 +3,7 @@
 #include "stdint.h"
 typedef void* intr_handler;
 void idt_init(void);
+void register_handler(uint8_t vec_no,intr_handler function);
 
 enum intr_status
 {

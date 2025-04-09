@@ -1,6 +1,14 @@
 {
     "files.associations": {
         "debug.h": "c",
-        "memory.h": "c"
+        "memory.h": "c",
+        "stdint.h": "c",
+        "global.h": "c",
+        "compare": "c",
+        "concepts": "c",
+        "cstddef": "c",
+        "exception": "c",
+        "type_traits": "c",
+        "typeinfo": "c"
     }
 }

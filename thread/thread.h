@@ -1,6 +1,7 @@
 #ifndef __THREAD_THREAD_H
 #define __THREAD_THREAD_H
 #include "stdint.h"
+#include "list.h"
 
 typedef void thread_func(void*); //这里有点不懂定义的什么意思 搜了搜博客 发现是函数声明 
                           
@@ -63,13 +64,24 @@ struct task_struct
     uint32_t* self_kstack;                          //pcb中的 kernel_stack 内核栈
     enum task_status status;                        //线程状态
     uint8_t priority;				      //特权级
+    uint8_t ticks;				      //在cpu 运行的滴答数 看ticks 来判断是否用完了时间片
+    uint32_t elapsed_ticks;                         //一共执行了多久
     char name[16];
+    
+    struct list_elem general_tag;                   //就绪队列中的连接节点
+    struct list_elem all_list_tag;		      //总队列的连接节点
+    
+    uint32_t* pgdir;				      //进程自己页表的虚拟地址 线程没有                  
     uint32_t stack_magic;			      //越界检查  因为我们pcb上面的就是我们要用的栈了 到时候还要越界检查
 };
 
+struct task_struct* running_thread(void);
 void kernel_thread(thread_func* function,void* func_arg);
 void thread_create(struct task_struct* pthread,thread_func function,void* func_arg);
 void init_thread(struct task_struct* pthread,char* name,int prio);
 struct task_struct* thread_start(char* name,int prio,thread_func function,void* func_arg);
+void make_main_thread(void);
+void schedule(void);
+void thread_init(void);
 
 #endif

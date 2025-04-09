@@ -1,44 +1,162 @@
-#include "thread.h"   //函数声明 各种结构体
-#include "stdint.h"   //前缀
-#include "string.h"   //memset
-#include "global.h"   //不清楚
-#include "memory.h"   //分配页需要
+#include "thread.h"
+#include "stdint.h"
+#include "string.h"
+#include "global.h"
+#include "memory.h"
+#include "debug.h"
+#include "interrupt.h"
+#include "print.h"
 
 #define PG_SIZE 4096
 
-void kernel_thread(thread_func* function,void* func_arg)
-{
-    function(func_arg);
+struct task_struct* main_thread;
+struct list thread_ready_list;
+struct list thread_all_list;
+
+extern void switch_to(struct task_struct* cur, struct task_struct* next);
+
+// 获取当前运行线程的 PCB
+struct task_struct* running_thread(void) {
+    uint32_t esp;
+    asm ("mov %%esp, %0" : "=g"(esp));
+    return (struct task_struct*)(esp & 0xfffff000);
 }
 
-void thread_create(struct task_struct* pthread,thread_func function,void* func_arg)
-{
-    pthread->self_kstack -= sizeof(struct intr_struct);  //减去中断栈的空间
+void kernel_thread(thread_func* function, void* func_arg) {
+    intr_enable();  // [+] 开中断，允许后续时间中断触发调度
+    if (function == NULL) {
+        put_str("[-] kernel_thread: function is NULL\n");
+        return;
+    }
+    function(func_arg);  // [+] 执行线程主函数
+}
+
+void thread_create(struct task_struct* pthread, thread_func function, void* func_arg) {
+    if (pthread == NULL) {
+        put_str("[-] thread_create: pthread is NULL\n");
+        return;
+    }
+    pthread->self_kstack -= sizeof(struct intr_struct);
     pthread->self_kstack -= sizeof(struct thread_stack);
-    struct thread_stack* kthread_stack = (struct thread_stack*)pthread->self_kstack; 
-    kthread_stack->eip = kernel_thread;                 //地址为kernel_thread 由kernel_thread 执行function
+
+    struct thread_stack* kthread_stack = (struct thread_stack*)pthread->self_kstack;
+    kthread_stack->eip = kernel_thread;
     kthread_stack->function = function;
     kthread_stack->func_arg = func_arg;
-    kthread_stack->ebp = kthread_stack->ebx = kthread_stack->ebx = kthread_stack->esi = 0; //初始化一下
-    return;
+    kthread_stack->ebp = kthread_stack->ebx = kthread_stack->edi = kthread_stack->esi = 0;
+
+    put_str("[+] thread_create: kernel stack initialized\n");
 }
 
-void init_thread(struct task_struct* pthread,char* name,int prio)
-{
-    memset(pthread,0,sizeof(*pthread)); //pcb位置清0
-    strcpy(pthread->name,name);
-    pthread->status = TASK_RUNNING;
+void init_thread(struct task_struct* pthread, char* name, int prio) {
+    if (pthread == NULL || name == NULL) {
+        put_str("[-] init_thread: invalid parameters\n");
+        return;
+    }
+
+    memset(pthread, 0, sizeof(*pthread));
+    strcpy(pthread->name, name);
+
+    pthread->status = (pthread == main_thread) ? TASK_RUNNING : TASK_READY;
+    pthread->self_kstack = (uint32_t*)((uint32_t)pthread + PG_SIZE);
+
     pthread->priority = prio;
-    pthread->self_kstack = (uint32_t*)((uint32_t)pthread + PG_SIZE); //刚开始的位置是最低位置 栈顶位置+一页
-    pthread->stack_magic = 0x23333333;                               //设置的魔数 检测是否越界限
+    pthread->ticks = prio;
+    pthread->elapsed_ticks = 0;
+    pthread->pgdir = NULL;
+    pthread->stack_magic = 0x23333333;
+
+    put_str("[+] init_thread: initialized thread ");
+    put_str(name);
+    put_char('\n');
 }
 
-struct task_struct* thread_start(char* name,int prio,thread_func function,void* func_arg)
-{
+struct task_struct* thread_start(char* name, int prio, thread_func function, void* func_arg) {
+    put_str("[+] thread_start: creating thread...\n");
+
+    if (function == NULL) {
+        put_str("[-] thread_start error: function is NULL\n");
+        return NULL;
+    }
+
+    if (name == NULL || name[0] == '\0') {
+        put_str("[-] thread_start error: name is NULL or empty\n");
+        return NULL;
+    }
+
     struct task_struct* thread = get_kernel_pages(1);
-    init_thread(thread,name,prio);
-    thread_create(thread,function,func_arg);
-    
-    asm volatile("movl %0,%%esp; pop %%ebp; pop %%ebx; pop %%edi; pop %%esi; ret" : : "g"(thread->self_kstack) :"memory"); //栈顶的位置为 thread->self_kstack 
+    if (thread == NULL) {
+        put_str("[-] thread_start error: get_kernel_pages failed!\n");
+        return NULL;
+    }
+
+    init_thread(thread, name, prio);
+    thread_create(thread, function, func_arg);
+
+    if (elem_find(&thread_ready_list, &thread->general_tag)) {
+        put_str("[-] thread_start error: thread already in ready list!\n");
+        return NULL;
+    }
+    list_append(&thread_ready_list, &thread->general_tag);
+
+    if (elem_find(&thread_all_list, &thread->all_list_tag)) {
+        put_str("[-] thread_start error: thread already in all list!\n");
+        return NULL;
+    }
+    list_append(&thread_all_list, &thread->all_list_tag);
+
+    put_str("[+] thread_start: thread created successfully\n");
     return thread;
+}
+
+void make_main_thread(void) {
+    main_thread = running_thread();
+    if (main_thread == NULL) {
+        put_str("[-] make_main_thread: running_thread returned NULL\n");
+        return;
+    }
+
+    init_thread(main_thread, "main", 31);
+
+    if (elem_find(&thread_all_list, &main_thread->all_list_tag)) {
+        put_str("[-] make_main_thread: already in all_list!\n");
+        return;
+    }
+    list_append(&thread_all_list, &main_thread->all_list_tag);
+    put_str("[+] make_main_thread: main thread initialized\n");
+}
+
+void schedule(void) {
+    ASSERT(intr_get_status() == INTR_OFF);
+
+    struct task_struct* cur = running_thread();
+    if (cur == NULL) {
+        put_str("[-] schedule: current thread NULL\n");
+        return;
+    }
+
+    if (cur->status == TASK_RUNNING) {
+        ASSERT(!elem_find(&thread_ready_list, &cur->general_tag));
+        list_append(&thread_ready_list, &cur->general_tag);
+
+        cur->status = TASK_READY;
+        cur->ticks = cur->priority;
+    }
+
+    ASSERT(!list_empty(&thread_ready_list));
+
+    struct task_struct* thread_tag = list_pop(&thread_ready_list);
+    struct task_struct* next = (struct task_struct*)((uint32_t)thread_tag & 0xfffff000);
+    next->status = TASK_RUNNING;
+
+    put_str("[+] schedule: switching to next thread\n");
+    switch_to(cur, next);
+}
+
+void thread_init(void) {
+    put_str("[+] thread_init start\n");
+    list_init(&thread_ready_list);
+    list_init(&thread_all_list);
+    make_main_thread();
+    put_str("[+] thread_init done\n");
 }
