@@ -3,6 +3,9 @@
 #include "stdint.h"
 #include "list.h"
 
+
+#define PG_SIZE 4096
+
 typedef void thread_func(void*); //这里有点不懂定义的什么意思 搜了搜博客 发现是函数声明 
                           
 enum task_status

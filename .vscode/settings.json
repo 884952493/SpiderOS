@@ -9,6 +9,8 @@
         "cstddef": "c",
         "exception": "c",
         "type_traits": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "sync.h": "c",
+        "console.h": "c"
     }
 }

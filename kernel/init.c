@@ -3,6 +3,10 @@
 #include "interrupt.h"
 #include "../device/timer.h"
 #include "memory.h"
+#include "../thread/thread.h"
+#include "../device/console.h"
+#include "../device/keyboard.h"
+#include "../userprog/tss.h"
 
 /*负责初始化所有模块 */
 void init_all() {
@@ -11,5 +15,7 @@ void init_all() {
    mem_init();
    timer_init();
    thread_init();
-
+   console_init();
+   keyboard_init();
+   tss_init();
 }

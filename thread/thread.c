@@ -118,11 +118,8 @@ void make_main_thread(void) {
 
     init_thread(main_thread, "main", 31);
 
-    if (elem_find(&thread_all_list, &main_thread->all_list_tag)) {
-        put_str("[-] make_main_thread: already in all_list!\n");
-        return;
-    }
-    list_append(&thread_all_list, &main_thread->all_list_tag);
+    ASSERT(!elem_find(&thread_all_list,&main_thread->all_list_tag));
+    list_append(&thread_all_list,&main_thread->all_list_tag);
     put_str("[+] make_main_thread: main thread initialized\n");
 }
 
@@ -130,28 +127,63 @@ void schedule(void) {
     ASSERT(intr_get_status() == INTR_OFF);
 
     struct task_struct* cur = running_thread();
-    if (cur == NULL) {
-        put_str("[-] schedule: current thread NULL\n");
-        return;
+    if(cur->status == TASK_RUNNING)
+    {
+    	ASSERT(!elem_find(&thread_ready_list,&cur->general_tag));     //目前在运行的肯定ready_list是不在的
+    	list_append(&thread_ready_list,&cur->general_tag);            //加入尾部
+    	
+    	cur->status = TASK_READY;
+    	cur->ticks = cur->priority;
     }
-
-    if (cur->status == TASK_RUNNING) {
-        ASSERT(!elem_find(&thread_ready_list, &cur->general_tag));
-        list_append(&thread_ready_list, &cur->general_tag);
-
-        cur->status = TASK_READY;
-        cur->ticks = cur->priority;
-    }
-
+    else
+    {}
     ASSERT(!list_empty(&thread_ready_list));
 
     struct task_struct* thread_tag = list_pop(&thread_ready_list);
     struct task_struct* next = (struct task_struct*)((uint32_t)thread_tag & 0xfffff000);
     next->status = TASK_RUNNING;
 
-    put_str("[+] schedule: switching to next thread\n");
+    // put_str("[+] schedule: switching to next thread\n");
     switch_to(cur, next);
 }
+
+void thread_block(enum task_status stat)
+{
+    //设置block状态的参数必须是下面三个以下的
+    ASSERT(((stat == TASK_BLOCKED) || (stat == TASK_WAITING) || stat == TASK_HANGING));
+    
+    enum intr_status old_status = intr_disable();			 //关中断
+    struct task_struct* cur_thread = running_thread();		 
+    cur_thread->status = stat;					 //把状态重新设置
+    
+    //调度器切换其他进程了 而且由于status不是running 不会再被放到就绪队列中
+    schedule();	
+    				
+    //被切换回来之后再进行的指令了
+    intr_set_status(old_status);
+}
+
+//由锁拥有者来执行的 善良者把原来自我阻塞的线程重新放到队列中
+void thread_unblock(struct task_struct* pthread)
+{
+    enum intr_status old_status = intr_disable();
+    ASSERT(((pthread->status == TASK_BLOCKED) || (pthread->status == TASK_WAITING) || (pthread->status == TASK_HANGING)));
+    if(pthread->status != TASK_READY)
+    {
+    	//被阻塞线程 不应该存在于就绪队列中）
+    	ASSERT(!elem_find(&thread_ready_list,&pthread->general_tag));
+    	if(elem_find(&thread_ready_list,&pthread->general_tag))
+    	    PANIC("thread_unblock: blocked thread in ready_list\n"); //debug.h中定义过
+    	
+    	//让阻塞了很久的任务放在就绪队列最前面
+    	list_push(&thread_ready_list,&pthread->general_tag);
+    	
+    	//状态改为就绪态
+    	pthread->status = TASK_READY;
+    }
+    intr_set_status(old_status);
+}
+
 
 void thread_init(void) {
     put_str("[+] thread_init start\n");
