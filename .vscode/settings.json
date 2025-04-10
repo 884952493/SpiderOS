@@ -17,6 +17,7 @@
         "io.h": "c",
         "cstdint": "c",
         "syscall.h": "c",
-        "process.h": "c"
+        "process.h": "c",
+        "thread.h": "c"
     }
 }

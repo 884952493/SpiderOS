@@ -9,7 +9,6 @@
 #include "debug.h"
 #include "../device/console.h"
 
-
 void start_process(void* filename_)
 {
     //schedule线程调度后 来到这里
@@ -74,7 +73,6 @@ void create_user_vaddr_bitmap(struct task_struct* user_prog)
     bitmap_init(&user_prog->userprog_vaddr.vaddr_bitmap);
 }
 
-
 void process_execute(void* filename,char* name)
 {
     struct task_struct* thread = get_kernel_pages(1);  //分配一页空间 得到pcb
@@ -92,4 +90,3 @@ void process_execute(void* filename,char* name)
     list_append(&thread_all_list,&thread->all_list_tag);
     intr_set_status(old_status);
 }
-
