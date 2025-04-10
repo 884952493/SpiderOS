@@ -8,6 +8,7 @@
 #define PG_SIZE 4096
 
 typedef void thread_func(void*); //这里有点不懂定义的什么意思 搜了搜博客 发现是函数声明 
+typedef int16_t pid_t;
 extern struct list thread_ready_list,thread_all_list;
 
 enum task_status
@@ -67,6 +68,7 @@ struct thread_stack
 struct task_struct
 {
     uint32_t* self_kstack;                          //pcb中的 kernel_stack 内核栈
+    pid_t pid;
     enum task_status status;                        //线程状态
     uint8_t priority;				      //特权级
     uint8_t ticks;				      //在cpu 运行的滴答数 看ticks 来判断是否用完了时间片

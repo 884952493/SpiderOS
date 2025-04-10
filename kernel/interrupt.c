@@ -4,13 +4,14 @@
 #include "global.h"
 #include "io.h"
 #include "print.h"
+#include "kernel.h"
 
 #define PIC_M_CTRL 0x20	       // 这里用的可编程中断控制器是8259A,主片的控制端口是0x20
 #define PIC_M_DATA 0x21	       // 主片的数据端口是0x21
 #define PIC_S_CTRL 0xa0	       // 从片的控制端口是0xa0
 #define PIC_S_DATA 0xa1	       // 从片的数据端口是0xa1
 
-#define IDT_DESC_CNT 0x30      // 目前总共支持的中断数
+#define IDT_DESC_CNT 0x81      // 目前总共支持的中断数
 #define EFLAGS_IF 0x00000200   // eflags 寄存器中的 if 位为 1
 
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" : "=g" (EFLAG_VAR))
@@ -81,8 +82,10 @@ static void idt_desc_init(void) {
       make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]); 
    }
    
-/* 单独处理系统调用,系统调用对应的中断门dpl为3,*/
-   put_str("[+] idt_desc_init done\n");
+   make_idt_desc(&idt[lastindex],IDT_DESC_ATTR_DPL3,syscall_handler);
+/* 单独处理系统调用,系统调用对应的中断门dpl为3,
+ * 中断处理程序为单独的syscall_handler */
+   put_str("   idt_desc_init done\n");
 }
 
 
@@ -140,12 +143,12 @@ static void exception_init(void) {			    // 完成一般中断处理函数注册
    intr_name[12] = "#SS Stack Fault Exception";
    intr_name[13] = "#GP General Protection Exception";
    intr_name[14] = "#PF Page-Fault Exception";
-   // 15 reserved
+  // intr_name[15] 第15项是intel保留项，未使用
    intr_name[16] = "#MF x87 FPU Floating-Point Error";
    intr_name[17] = "#AC Alignment Check Exception";
    intr_name[18] = "#MC Machine-Check Exception";
    intr_name[19] = "#XF SIMD Floating-Point Exception";
-
+   //intr_name[80] = "SYSCALL INTR";
    put_str("   exception_init done\n");
 }
 
@@ -153,9 +156,9 @@ static void exception_init(void) {			    // 完成一般中断处理函数注册
 /*完成有关中断的所有初始化工作*/
 void idt_init() {
    put_str("[+] idt_init start\n");
-   idt_desc_init();
-   exception_init();
-   pic_init();
+   idt_desc_init();	   // 初始化中断描述符表
+   exception_init();	   // 异常名初始化并注册通常的中断处理函数
+   pic_init();		   // 初始化8259A
 
    uint64_t idt_operand = ((sizeof(idt) - 1) | ((uint64_t)(uint32_t)idt << 16));
    asm volatile("lidt %0" : : "m"(idt_operand));

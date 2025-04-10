@@ -7,21 +7,22 @@
 
 #define BITMAP_MASK 1
 
+
 void bitmap_init(struct bitmap* btmp)
 {
     if (btmp == NULL || btmp->bits == NULL) {
-        put_str("[-] bitmap_init: 空指针异常\n");
+        put_str("[-] bitmap_init: NULL pointer exception\n");
         return;
     }
     memset(btmp->bits, 0, btmp->btmp_bytes_len);
-    put_str("[+] bitmap_init: 位图初始化成功\n");
+    // put_str("[+] bitmap_init: Bitmap initialized successfully\n");
     return;
 }
 
 bool bitmap_scan_test(struct bitmap* btmp, uint32_t bit_idx)  //一个8位的数 bit_idx/8 找数组下标 %得索引下的具体位置
 {
     if (btmp == NULL || btmp->bits == NULL) {
-        put_str("[-] bitmap_scan_test: 空指针异常\n");
+        put_str("[-] bitmap_scan_test: NULL pointer exception\n");
         return false;
     }
 
@@ -29,16 +30,16 @@ bool bitmap_scan_test(struct bitmap* btmp, uint32_t bit_idx)  //一个8位的数
     uint32_t byte_pos = bit_idx % 8;
 
     if (byte_idx >= btmp->btmp_bytes_len) {
-        put_str("[-] bitmap_scan_test: 位图索引越界\n");
+        put_str("[-] bitmap_scan_test: Bitmap index out of bounds\n");
         return false;
     }
 
     bool result = (btmp->bits[byte_idx] & (BITMAP_MASK << byte_pos));
-    put_str("[+] bitmap_scan_test: 查询位图第 ");
-    put_int(bit_idx);
-    put_str(" 位结果=");
-    put_int(result);
-    put_char('\n');
+    // put_str("[+] bitmap_scan_test: Checking bit ");
+    // put_int(bit_idx);
+    // put_str(" result=");
+    // put_int(result);
+    // put_char('\n');
     return result;
 }
 
@@ -46,20 +47,20 @@ int bitmap_scan(struct bitmap* btmp, uint32_t cnt)
 {
     ASSERT(cnt >= 1);
     if (btmp == NULL || btmp->bits == NULL) {
-        put_str("[-] bitmap_scan: 空指针异常\n");
+        put_str("[-] bitmap_scan: NULL pointer exception\n");
         return -1;
     }
 
-    put_str("[+] bitmap_scan: 开始扫描位图，要求连续空闲页数=");
-    put_int(cnt);
-    put_char('\n');
+    // put_str("[+] bitmap_scan: Start scanning bitmap, requested continuous free bits = ");
+    // put_int(cnt);
+    // put_char('\n');
 
     uint32_t first_find_idx = 0;
     while (first_find_idx < btmp->btmp_bytes_len && btmp->bits[first_find_idx] == 0xff)
         ++first_find_idx;
 
     if (first_find_idx == btmp->btmp_bytes_len) {
-        put_str("[-] bitmap_scan: 未找到空闲位\n");
+        put_str("[-] bitmap_scan: No free bits found\n");
         return -1;
     }
 
@@ -69,9 +70,9 @@ int bitmap_scan(struct bitmap* btmp, uint32_t cnt)
 
     if (cnt == 1) {
         int result = find_pos + 8 * first_find_idx;
-        put_str("[+] bitmap_scan: 找到1个空闲页，位置=");
-        put_int(result);
-        put_char('\n');
+        // put_str("[+] bitmap_scan: Found 1 free bit at position = ");
+        // put_int(result);
+        // put_char('\n');
         return result;
     }
 
@@ -85,15 +86,15 @@ int bitmap_scan(struct bitmap* btmp, uint32_t cnt)
 
         if (tempcnt == cnt) {
             int result = ret_pos - tempcnt + 1;
-            put_str("[+] bitmap_scan: 找到连续空闲页，起始位置=");
-            put_int(result);
-            put_char('\n');
+            // put_str("[+] bitmap_scan: Found continuous free bits, start position = ");
+            // put_int(result);
+            // put_char('\n');
             return result;
         }
         ++ret_pos;
     }
 
-    put_str("[-] bitmap_scan: 未找到连续空闲页\n");
+    put_str("[-] bitmap_scan: No continuous free bits found\n");
     return -1;	
 }
 
@@ -102,7 +103,7 @@ void bitmap_set(struct bitmap* btmp, uint32_t bit_idx, int8_t value)
     ASSERT(value == 0 || value == 1);
 
     if (btmp == NULL || btmp->bits == NULL) {
-        put_str("[-] bitmap_set: 空指针异常\n");
+        put_str("[-] bitmap_set: NULL pointer exception\n");
         return;
     }
 
@@ -110,7 +111,7 @@ void bitmap_set(struct bitmap* btmp, uint32_t bit_idx, int8_t value)
     uint32_t byte_pos = bit_idx % 8;
 
     if (byte_idx >= btmp->btmp_bytes_len) {
-        put_str("[-] bitmap_set: 位图索引越界\n");
+        put_str("[-] bitmap_set: Bitmap index out of bounds\n");
         return;
     }
 
@@ -119,10 +120,10 @@ void bitmap_set(struct bitmap* btmp, uint32_t bit_idx, int8_t value)
     else
         btmp->bits[byte_idx] &= ~(BITMAP_MASK << byte_pos);
 
-    put_str("[+] bitmap_set: 设置位图第 ");
-    put_int(bit_idx);
-    put_str(" 位为 ");
-    put_int(value);
-    put_char('\n');
+    // put_str("[+] bitmap_set: Set bit ");
+    // put_int(bit_idx);
+    // put_str(" to ");
+    // put_int(value);
+    // put_char('\n');
     return;
 }

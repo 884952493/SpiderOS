@@ -7,6 +7,7 @@
 #include "../device/console.h"
 #include "../device/keyboard.h"
 #include "../userprog/tss.h"
+#include "../userprog/syscall-init.h"
 
 /*负责初始化所有模块 */
 void init_all() {
@@ -18,4 +19,5 @@ void init_all() {
    console_init();
    keyboard_init();
    tss_init();
+   syscall_init();
 }

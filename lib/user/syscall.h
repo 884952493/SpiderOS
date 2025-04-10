@@ -1,11 +1,12 @@
-#ifndef __LIB_USER_SCSCALL_H
-#define __LIB_USER_SCSCALL_H
+#ifndef __LIB_USER_SYSCALL_H
+#define __LIB_USER_SYSCALL_H
 #include "stdint.h"
 enum SYSCALL_NR
 {
-    SYS_GETPID
+    SYS_GETPID,
+    SYS_WRITE
 };
 
 uint32_t getpid(void);
-
+void write(char* str);
 #endif

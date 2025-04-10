@@ -14,6 +14,9 @@
         "console.h": "c",
         "interrupt.h": "c",
         "print.h": "c",
-        "io.h": "c"
+        "io.h": "c",
+        "cstdint": "c",
+        "syscall.h": "c",
+        "process.h": "c"
     }
 }
