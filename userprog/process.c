@@ -5,9 +5,10 @@
 #include "memory.h"
 #include "print.h"
 #include "../thread/thread.h"
-#include "interrupt.h"
+#include "../kernel/interrupt.h"
 #include "debug.h"
 #include "../device/console.h"
+
 
 void start_process(void* filename_)
 {
@@ -73,6 +74,7 @@ void create_user_vaddr_bitmap(struct task_struct* user_prog)
     bitmap_init(&user_prog->userprog_vaddr.vaddr_bitmap);
 }
 
+
 void process_execute(void* filename,char* name)
 {
     struct task_struct* thread = get_kernel_pages(1);  //分配一页空间 得到pcb
@@ -80,6 +82,7 @@ void process_execute(void* filename,char* name)
     create_user_vaddr_bitmap(thread);			 //为虚拟地址位图初始化 分配空间
     thread_create(thread,start_process,filename);	 //创造线程 start_process 之后通过start_process intr_exit跳转到用户进程
     thread->pgdir = create_page_dir();		 //把页目录表的地址分配了 并且把内核的页目录都给复制过去 这样操作系统对每个进程都可见
+    block_desc_init(thread->u_block_desc);
     
     enum intr_status old_status = intr_disable();     
     ASSERT(!elem_find(&thread_ready_list,&thread->general_tag));

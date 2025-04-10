@@ -78,10 +78,12 @@ struct task_struct
     struct list_elem general_tag;                   //就绪队列中的连接节点
     struct list_elem all_list_tag;		      //总队列的连接节点
     
-    uint32_t* pgdir;				      //进程自己页表的虚拟地址 线程没有     
-    struct virtual_addr userprog_vaddr;	      //用户进程的虚拟空间                
+    uint32_t* pgdir;				      //进程自己页表的虚拟地址 线程没有   
+    struct virtual_addr userprog_vaddr;	      //用户进程的虚拟空间               
+    struct mem_block_desc u_block_desc[DESC_CNT];   //内存块描述符
     uint32_t stack_magic;			      //越界检查  因为我们pcb上面的就是我们要用的栈了 到时候还要越界检查
 };
+
 
 struct task_struct* running_thread(void);
 void kernel_thread(thread_func* function,void* func_arg);
