@@ -6,6 +6,7 @@
 #include "debug.h"
 #include "interrupt.h"
 #include "print.h"
+#include "../userprog/process.h"
 
 #define PG_SIZE 4096
 
@@ -36,7 +37,7 @@ void thread_create(struct task_struct* pthread, thread_func function, void* func
         put_str("[-] thread_create: pthread is NULL\n");
         return;
     }
-    pthread->self_kstack -= sizeof(struct intr_struct);
+    pthread->self_kstack -= sizeof(struct intr_stack);
     pthread->self_kstack -= sizeof(struct thread_stack);
 
     struct thread_stack* kthread_stack = (struct thread_stack*)pthread->self_kstack;
@@ -144,6 +145,8 @@ void schedule(void) {
     next->status = TASK_RUNNING;
 
     // put_str("[+] schedule: switching to next thread\n");
+    process_activate(next);
+
     switch_to(cur, next);
 }
 

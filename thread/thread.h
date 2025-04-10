@@ -2,12 +2,14 @@
 #define __THREAD_THREAD_H
 #include "stdint.h"
 #include "list.h"
+#include "memory.h"
 
 
 #define PG_SIZE 4096
 
 typedef void thread_func(void*); //这里有点不懂定义的什么意思 搜了搜博客 发现是函数声明 
-                          
+extern struct list thread_ready_list,thread_all_list;
+
 enum task_status
 {
     TASK_RUNNING, // 0
@@ -21,7 +23,7 @@ enum task_status
 /*         intr_stack 用于处理中断被切换的上下文环境储存 */
 /*	   这里我又去查了一下 为什么是反着的 越在后面的参数 地址越高 */
 
-struct intr_struct
+struct intr_stack
 {
     uint32_t vec_no; //中断号
     uint32_t edi;
@@ -74,7 +76,8 @@ struct task_struct
     struct list_elem general_tag;                   //就绪队列中的连接节点
     struct list_elem all_list_tag;		      //总队列的连接节点
     
-    uint32_t* pgdir;				      //进程自己页表的虚拟地址 线程没有                  
+    uint32_t* pgdir;				      //进程自己页表的虚拟地址 线程没有     
+    struct virtual_addr userprog_vaddr;	      //用户进程的虚拟空间                
     uint32_t stack_magic;			      //越界检查  因为我们pcb上面的就是我们要用的栈了 到时候还要越界检查
 };
 

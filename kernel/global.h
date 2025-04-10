@@ -10,6 +10,15 @@
 #define TI_GDT 0
 #define TI_LDT 1
 
+#define EFLAGS_MBS	(1 << 1)
+#define EFLAGS_IF_1	(1 << 9)
+#define EFLAGS_IF_0	0
+#define EFLAGS_IOPL_3	(3 << 12)
+#define EFLAGS_IOPL_0	(0 << 12) 
+#define DIV_ROUND_UP(X,STEP) ((X + STEP - 1) / STEP)
+#define default_prio   31
+#define USER_STACK3_VADDR (0xc0000000 - 0x1000)
+
 //--------------   GDT描述符属性  ------------
 
 #define DESC_G_4K	1

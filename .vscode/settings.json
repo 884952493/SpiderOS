@@ -11,6 +11,9 @@
         "type_traits": "c",
         "typeinfo": "c",
         "sync.h": "c",
-        "console.h": "c"
+        "console.h": "c",
+        "interrupt.h": "c",
+        "print.h": "c",
+        "io.h": "c"
     }
 }
