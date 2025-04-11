@@ -359,8 +359,7 @@ void* sys_malloc(uint32_t size)
     	    }
     	    intr_set_status(old_status);
     	}
-    	
-    	b = (struct mem_block*)list_pop(&(descs[desc_idx].free_list));
+    	b = elem2entry(struct mem_block,free_elem,list_pop(&(descs[desc_idx].free_list)));
     	memset(b,0,descs[desc_idx].block_size);
     	
     	a = block2arena(b);
@@ -369,7 +368,6 @@ void* sys_malloc(uint32_t size)
     	return (void*)b;
     }
 }
-
 
 void pfree(uint32_t pg_phy_addr)
 {

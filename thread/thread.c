@@ -10,6 +10,7 @@
 #include "../thread/sync.h"
 
 struct task_struct* main_thread;                        //主线程main_thread的pcb
+struct task_struct* idle_thread;			  //休眠线程
 struct list thread_ready_list;			  //就绪队列
 struct list thread_all_list;				  //总线程队列
 struct lock pid_lock;
@@ -20,6 +21,7 @@ extern void switch_to(struct task_struct* cur,struct task_struct* next);
 // 这部分我可以来稍微解释一下
 // 我们线程所在的esp 肯定是在 我们get得到的那一页内存 pcb页上下浮动 但是我们的pcb的最起始位置是整数的 除去后面的12位
 // 那么我们对前面的取 & 则可以得到 我们的地址所在地
+
 pid_t allocate_pid(void)
 {
     static pid_t next_pid = 0;			  //约等于全局变量 全局性+可修改性
@@ -118,23 +120,15 @@ void schedule(void)
     else
     {}
     
-    ASSERT(!list_empty(&thread_ready_list));
+    if(list_empty(&thread_ready_list))
+    	thread_unblock(idle_thread);
+    
     struct task_struct* thread_tag = list_pop(&thread_ready_list);
     //书上面的有点难理解 代码我写了一个我能理解的
     struct task_struct* next = (struct task_struct*)((uint32_t)thread_tag & 0xfffff000);
     next->status = TASK_RUNNING;
     process_activate(next);
     switch_to(cur,next);                                              //esp头顶的是 返回地址 +12是next +8是cur
-}
-
-void thread_init(void)
-{
-    put_str("thread_init start!\n");
-    list_init(&thread_ready_list);
-    list_init(&thread_all_list);
-    lock_init(&pid_lock);
-    make_main_thread();
-    put_str("thread_init done!\n");
 }
 
 void thread_block(enum task_status stat)
@@ -174,3 +168,33 @@ void thread_unblock(struct task_struct* pthread)
     intr_set_status(old_status);
 }
 
+void idle(void)
+{
+    while(1)
+    {
+    	thread_block(TASK_BLOCKED);	//先阻塞后 被唤醒之后即通过命令hlt 使cpu挂起 直到外部中断cpu恢复
+    	asm volatile ("sti;hlt" : : :"memory");
+    }
+}
+
+void thread_yield(void)
+{
+    struct task_struct* cur = running_thread();
+    enum intr_status old_status = intr_disable();
+    ASSERT(!elem_find(&thread_ready_list,&cur->general_tag));
+    list_append(&thread_ready_list,&cur->general_tag);	//放到就绪队列末尾
+    cur->status = TASK_READY;					//状态设置为READY 可被调度
+    schedule();						
+    intr_set_status(old_status);
+}
+
+void thread_init(void)
+{
+    put_str("thread_init start!\n");
+    list_init(&thread_ready_list);
+    list_init(&thread_all_list);
+    lock_init(&pid_lock);
+    make_main_thread();
+    idle_thread = thread_start("idle",10,idle,NULL);	//创建休眠进程
+    put_str("thread_init done!\n");
+}

@@ -66,6 +66,7 @@ static void pic_init(void) {
    put_str("   pic_init done\n");
 }
 
+
 /* 创建中断门描述符 */
 static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function) { 
    p_gdesc->func_offset_low_word = (uint32_t)function & 0x0000FFFF;

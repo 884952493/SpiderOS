@@ -2,15 +2,14 @@
 #define __THREAD_THREAD_H
 #include "stdint.h"
 #include "list.h"
-#include "memory.h"
-
+#include "../kernel/memory.h"
 
 #define PG_SIZE 4096
-
-typedef void thread_func(void*); //这里有点不懂定义的什么意思 搜了搜博客 发现是函数声明 
 typedef int16_t pid_t;
 extern struct list thread_ready_list,thread_all_list;
 
+typedef void thread_func(void*); //这里有点不懂定义的什么意思 搜了搜博客 发现是函数声明 
+                          
 enum task_status
 {
     TASK_RUNNING, // 0
@@ -84,7 +83,6 @@ struct task_struct
     uint32_t stack_magic;			      //越界检查  因为我们pcb上面的就是我们要用的栈了 到时候还要越界检查
 };
 
-
 struct task_struct* running_thread(void);
 void kernel_thread(thread_func* function,void* func_arg);
 void thread_create(struct task_struct* pthread,thread_func function,void* func_arg);
@@ -93,5 +91,9 @@ struct task_struct* thread_start(char* name,int prio,thread_func function,void* 
 void make_main_thread(void);
 void schedule(void);
 void thread_init(void);
+void thread_block(enum task_status stat);
+void thread_unblock(struct task_struct* pthread);
+void idle(void);
+void thread_yield(void);
 
 #endif

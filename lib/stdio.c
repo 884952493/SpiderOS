@@ -77,3 +77,13 @@ uint32_t printf(const char* format, ...)
     write(buf);
     return retval;
 }
+
+uint32_t sprintf(char* _des,const char* format, ...)
+{
+    va_list args;
+    uint32_t retval;
+    va_start(args,format);		//args指向char* 的指针 方便指向下一个栈参数
+    retval = vsprintf(_des,format,args);
+    va_end(args);
+    return retval;
+}

@@ -15,18 +15,29 @@
 
 void k_thread_a(void* );
 void k_thread_b(void* );
+void k_thread_c(void* );
+void k_thread_d(void* );
+
 void u_prog_a (void);
 void u_prog_b (void);
+void u_prog_c (void);
+void u_prog_d (void);
+
 
 int main(void) {
    put_str("I am kernel\n");
    init_all();
 
    intr_enable();
-   process_execute(u_prog_a, "u_prog_a");
-   process_execute(u_prog_b, "u_prog_b"); 
-   thread_start("k_thread_a", 31, k_thread_a, "argA ");
-   thread_start("k_thread_b", 31, k_thread_b, "argB ");  
+//    process_execute(u_prog_c, "u_prog_c");
+//    process_execute(u_prog_d, "u_prog_d");
+//    thread_start("k_thread_c", 31, k_thread_c, "k_thread_c ");
+//    thread_start("k_thread_d", 31, k_thread_d, "k_thread_d ");
+
+//    process_execute(u_prog_a, "u_prog_a");
+//    process_execute(u_prog_b, "u_prog_b"); 
+//    thread_start("k_thread_a", 31, k_thread_a, "argA ");
+//    thread_start("k_thread_b", 31, k_thread_b, "argB ");  
    while(1);
    return 0;
 }
@@ -94,4 +105,33 @@ void u_prog_b(void) {
 	free(addr2);
 	free(addr3);
 	while(1);
+}
+void u_prog_c(void) {
+    // printf("\nu_prog_c");
+    void* addr1 = malloc(256);
+    printf("malloc addr:0x%x",(int)addr1);
+	free(addr1);
+    while(1);
+}
+
+void u_prog_d(void) {
+    printf("\nu_prog_d");
+    // void* addr1 = malloc(256);
+	// free(addr1);
+    while(1);
+}
+
+void k_thread_c(void* arg){
+    console_put_str("\nk_thread_c");
+    void* addr1 = malloc(256);
+    printf("malloc addr:0x%x",(int)addr1);
+	free(addr1);
+
+    while(1);
+}
+void k_thread_d(void* arg){
+    console_put_str("\nk_thread_d");
+    // void* addr1 = sys_malloc(256);
+	// sys_free(addr1);
+    while(1);
 }

@@ -5,4 +5,6 @@ void frequency_set(uint8_t counter_port ,uint8_t counter_no,uint8_t rwl,uint8_t 
 void intr_timer_handler(void);
 void timer_init(void);
 void mtime_sleep(uint32_t m_seconds);
+void ticks_to_sleep(uint32_t sleep_ticks);
 #endif
+
