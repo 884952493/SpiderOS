@@ -40,8 +40,8 @@ int main(void)
     }
     sys_free(prog_buf);
     
-    cls_screen();
-    console_put_str("[Love 6@localhost /]$ ");
+    // cls_screen();
+    console_put_str("[SpiderOS@hutaotao /]:~$ ");
     
    
     while(1);

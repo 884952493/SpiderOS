@@ -21,7 +21,7 @@ char* argv[MAX_ARG_NR];   //参数
 //固定输出提示副
 void print_prompt(void)
 {
-    printf("[Love 6@localhost %s]$ ",cwd_cache);
+    printf("[SpiderOS@hutaotao %s]:~$ ",cwd_cache);
 }
 
 //最多读入count字节到buf
