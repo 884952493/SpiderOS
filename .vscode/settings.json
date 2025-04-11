@@ -19,6 +19,7 @@
         "syscall.h": "c",
         "process.h": "c",
         "thread.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "stdio-kernel.h": "c"
     }
 }

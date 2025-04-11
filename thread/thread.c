@@ -8,6 +8,7 @@
 #include "print.h"
 #include "../userprog/process.h"
 #include "../thread/sync.h"
+#include "syscall.h"
 
 struct task_struct* main_thread;                        //主线程main_thread的pcb
 struct task_struct* idle_thread;			  //休眠线程
@@ -16,6 +17,7 @@ struct list thread_all_list;				  //总线程队列
 struct lock pid_lock;
 
 extern void switch_to(struct task_struct* cur,struct task_struct* next);
+extern void init(void);
 
 // 获取 pcb 指针
 // 这部分我可以来稍微解释一下
@@ -74,6 +76,15 @@ void init_thread(struct task_struct* pthread,char* name,int prio)
     pthread->ticks = prio;                                           //和特权级 相同的时间片
     pthread->elapsed_ticks = 0;
     pthread->pgdir = NULL;                                           //线程没有单独的地址
+    pthread->fd_table[0] = 0;						
+    pthread->fd_table[1] = 0;
+    pthread->fd_table[2] = 0;
+    
+    uint8_t fd_idx = 3;
+    while(fd_idx < MAX_FILES_OPEN_PER_PROC)
+    	pthread->fd_table[fd_idx++] = -1;
+    pthread->parent_pid   = -1;					//父进程的pid默认为-1
+    pthread->cwd_inode_nr = 0;					//默认工作路径在根目录
     pthread->stack_magic = 0x23333333;                               //设置的魔数 检测是否越界限
 }
 
@@ -127,7 +138,7 @@ void schedule(void)
     //书上面的有点难理解 代码我写了一个我能理解的
     struct task_struct* next = (struct task_struct*)((uint32_t)thread_tag & 0xfffff000);
     next->status = TASK_RUNNING;
-    process_activate(next);
+    process_activate(next);	
     switch_to(cur,next);                                              //esp头顶的是 返回地址 +12是next +8是cur
 }
 
@@ -188,12 +199,90 @@ void thread_yield(void)
     intr_set_status(old_status);
 }
 
+pid_t fork_pid(void)
+{
+    return allocate_pid();
+}
+
+void pad_print(char* buf,int32_t buf_len,void* ptr,char format)
+{
+    memset(buf,0,buf_len);
+    uint8_t out_pad_0idx = 0;
+    switch(format)
+    {
+        case 's':
+            out_pad_0idx = sprintf(buf,"%s",ptr);
+            break;
+        case 'd':
+            out_pad_0idx = sprintf(buf,"%d",*((int16_t*)ptr));
+            break;
+        case 'x':
+            out_pad_0idx = sprintf(buf,"%x",*((uint32_t*)ptr));   
+    }
+    while(out_pad_0idx < buf_len)
+    {
+        buf[out_pad_0idx] = ' ';
+        out_pad_0idx++;
+    }
+    sys_write(stdout_no,buf,buf_len-1);
+}
+
+bool elem2thread_info(struct list_elem* pelem,int arg)
+{
+    struct task_struct* pthread = elem2entry(struct task_struct,all_list_tag,pelem);
+    char out_pad[16] = {0};
+    pad_print(out_pad,16,&pthread->pid,'d');
+    
+    if(pthread->parent_pid == -1)
+    	pad_print(out_pad,16,"NULL",'s');
+    else
+        pad_print(out_pad,16,&pthread->parent_pid,'d');
+        
+    switch(pthread->status)
+    {
+        case 0:
+            pad_print(out_pad,16,"RUNNING",'s');
+            break;
+        case 1:
+            pad_print(out_pad,16,"READY",'s');
+            break;
+        case 2:
+            pad_print(out_pad,16,"BLOCKED",'s');
+            break;
+        case 3:
+            pad_print(out_pad,16,"WAITING",'s');
+            break;
+        case 4:
+            pad_print(out_pad,16,"HANGING",'s');
+            break;
+        case 5:
+            pad_print(out_pad,16,"DIED",'s');
+            break;
+    }
+    pad_print(out_pad,16,&pthread->elapsed_ticks,'x');
+    
+    memset(out_pad,0,16);
+    ASSERT(strlen(pthread->name) < 17);
+    memcpy(out_pad,pthread->name,strlen(pthread->name));
+    strcat(out_pad,"\n");
+    sys_write(stdout_no,out_pad,strlen(out_pad));
+    return false;
+}
+//打印任务列表
+void sys_ps(void)
+{
+    char* ps_title = "PID             PPID            STAT             TICKS            COMMAND\n";
+    sys_write(stdout_no,ps_title,strlen(ps_title));
+    list_traversal(&thread_all_list,elem2thread_info,0);
+}
+
 void thread_init(void)
 {
     put_str("thread_init start!\n");
     list_init(&thread_ready_list);
     list_init(&thread_all_list);
     lock_init(&pid_lock);
+    process_execute(init,"init");
     make_main_thread();
     idle_thread = thread_start("idle",10,idle,NULL);	//创建休眠进程
     put_str("thread_init done!\n");

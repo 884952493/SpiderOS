@@ -3,10 +3,6 @@
 #include "string.h"
 #include "syscall.h"
 
-#define va_start(ap,v) ap = (va_list)&v          //这里把第一个char*地址赋给ap 强制转换一下
-#define va_arg(ap,t)   *((t*)(ap +=4))	   //强制类型转换 得到栈中参数
-#define va_end(ap)	ap = NULL   
-
 void itoa(uint32_t value,char** buf_ptr_addr,uint8_t base)//这里有理解的 为了修改一级指针的值 再取一次& 即可修改一级指针本身的值
 {
     uint32_t m = value % base;
@@ -69,13 +65,11 @@ uint32_t vsprintf(char* str,const char* format,va_list ap)
 uint32_t printf(const char* format, ...)
 {
     va_list args;
-    uint32_t retval;
     va_start(args,format);		//args指向char* 的指针 方便指向下一个栈参数
     char buf[1024] = {0};
-    retval = vsprintf(buf,format,args);
+    vsprintf(buf,format,args);
     va_end(args);
-    write(buf);
-    return retval;
+    return write(1,buf,strlen(buf));
 }
 
 uint32_t sprintf(char* _des,const char* format, ...)

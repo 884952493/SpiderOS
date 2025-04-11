@@ -12,126 +12,48 @@
 #include "../lib/user/syscall.h"
 #include "../userprog/syscall-init.h"
 #include "../lib/stdio.h"
+#include "../lib/kernel/stdio-kernel.h"
+#include "../fs/fs.h"
+#include "../fs/file.h"
+#include "../shell/shell.h"
+#include "global.h"
 
-void k_thread_a(void* );
-void k_thread_b(void* );
-void k_thread_c(void* );
-void k_thread_d(void* );
-
-void u_prog_a (void);
-void u_prog_b (void);
-void u_prog_c (void);
-void u_prog_d (void);
-
-
-int main(void) {
-   put_str("I am kernel\n");
-   init_all();
-
-   intr_enable();
-//    process_execute(u_prog_c, "u_prog_c");
-//    process_execute(u_prog_d, "u_prog_d");
-//    thread_start("k_thread_c", 31, k_thread_c, "k_thread_c ");
-//    thread_start("k_thread_d", 31, k_thread_d, "k_thread_d ");
-
-//    process_execute(u_prog_a, "u_prog_a");
-//    process_execute(u_prog_b, "u_prog_b"); 
-//    thread_start("k_thread_a", 31, k_thread_a, "argA ");
-//    thread_start("k_thread_b", 31, k_thread_b, "argB ");  
-   while(1);
-   return 0;
-}
-
-void k_thread_a(void* arg){
-
-	void* addr1 = sys_malloc(256);
-	void* addr2 = sys_malloc(255);
-	void* addr3 = sys_malloc(254);
-	console_put_str(" thread_a malloc addr:0x");
-	console_put_int((int)addr1);
-	console_put_char(',');
-	console_put_int((int)addr2);
-	console_put_char(',');
-	console_put_int((int)addr3);
-	console_put_char('\n');
-	int cpu_delay = 100000;
-	while(cpu_delay-->0);
-	sys_free(addr1);
-	sys_free(addr2);
-	sys_free(addr3);
-	while(1);
-}
-
-void k_thread_b(void* arg){
-	void* addr1 = sys_malloc(256);
-	void* addr2 = sys_malloc(255);
-	void* addr3 = sys_malloc(254);
-	console_put_str(" thread_b malloc addr:0x");
-	console_put_int((int)addr1);
-	console_put_char(',');
-	console_put_int((int)addr2);
-	console_put_char(',');
-	console_put_int((int)addr3);
-	console_put_char('\n');
-	int cpu_delay = 100000;
-	while(cpu_delay-->0);
-	sys_free(addr1);
-	sys_free(addr2);
-	sys_free(addr3);
-	while(1);
-}
-
-void u_prog_a(void) {
-	void* addr1 = malloc(256);
-	void* addr2 = malloc(255);
-	void* addr3 = malloc(254);
-	printf(" prog_a malloc addr:0x%x, 0x%x, 0x%x\n", (int)addr1,(int)addr2,(int)addr3);
-	int cpu_delay = 100000;
-	while(cpu_delay-->0);
-	free(addr1);
-	free(addr2);
-	free(addr3);
-	while(1);
-}
-
-void u_prog_b(void) {
-	void* addr1 = malloc(256);
-	void* addr2 = malloc(255);
-	void* addr3 = malloc(254);
-	printf(" prog_b malloc addr:0x%x, 0x%x, 0x%x\n", (int)addr1,(int)addr2,(int)addr3);
-	int cpu_delay = 100000;
-	while(cpu_delay-->0);
-	free(addr1);
-	free(addr2);
-	free(addr3);
-	while(1);
-}
-void u_prog_c(void) {
-    // printf("\nu_prog_c");
-    void* addr1 = malloc(256);
-    printf("malloc addr:0x%x",(int)addr1);
-	free(addr1);
+int main(void) 
+{
+    put_str("I am kernel\n");
+    init_all();
+    intr_enable();
+    
+    uint32_t file_size = 10236;
+    uint32_t sec_cnt   = DIV_ROUND_UP(file_size,512);
+    struct disk* sda = &channels[0].devices[0];
+    void* prog_buf = sys_malloc(file_size);
+    ide_read(sda,300,prog_buf,sec_cnt);
+    int32_t fd = sys_open("/prog_no_arg",O_CREAT | O_RDWR);
+    if(fd != -1)
+    {
+        if(sys_write(fd,prog_buf,file_size) == -1)
+        {
+            printk("file write error\n");
+            while(1);
+        }
+    }
+    sys_free(prog_buf);
+    
+    cls_screen();
+    console_put_str("[Love 6@localhost /]$ ");
+    
+   
     while(1);
+    return 0;
 }
 
-void u_prog_d(void) {
-    printf("\nu_prog_d");
-    // void* addr1 = malloc(256);
-	// free(addr1);
-    while(1);
-}
-
-void k_thread_c(void* arg){
-    console_put_str("\nk_thread_c");
-    void* addr1 = malloc(256);
-    printf("malloc addr:0x%x",(int)addr1);
-	free(addr1);
-
-    while(1);
-}
-void k_thread_d(void* arg){
-    console_put_str("\nk_thread_d");
-    // void* addr1 = sys_malloc(256);
-	// sys_free(addr1);
-    while(1);
+void init(void)
+{
+    uint32_t ret_pid = fork();
+    if(ret_pid)
+        while(1);
+    else
+        my_shell();
+    PANIC("init: should not be here");
 }

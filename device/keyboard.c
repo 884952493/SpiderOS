@@ -33,6 +33,7 @@ struct ioqueue ioqueue;
 #define ctrl_r_make 0xe01d
 #define ctrl_r_break 0xe09d
 #define caps_lock_make 0x3a
+
 bool ctrl_status = false,shift_status = false,alt_status = false,caps_lock_status = false,ext_scancode = false;
 
 
@@ -153,7 +154,10 @@ void intr_keyboard_handler(void)
     	
     	uint8_t index = (scancode & 0x00ff);
         char cur_char = keymap[index][shift];
-    
+        
+        if((ctrl_down_last && cur_char == 'l') || (ctrl_down_last && cur_char == 'u'))
+            cur_char -= 'a';
+        
         if(cur_char)
         {
         	if(!ioq_full(&ioqueue))

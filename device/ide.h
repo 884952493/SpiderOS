@@ -5,7 +5,7 @@
 #include "bitmap.h"
 #include "list.h"
 #include "../thread/sync.h"
-#include "list.h"
+#include "../fs/super_block.h"
 
 //分区结构
 struct partition
@@ -63,6 +63,10 @@ struct ide_channel
     struct semaphore disk_done;      //用于阻塞 唤醒驱动程序  和锁不一样 把自己阻塞后 把cpu腾出来
     struct disk devices[2];	      //一通道2硬盘 1主1从
 };
+
+extern uint8_t channel_cnt;
+extern struct ide_channel channels[2];
+extern struct list partition_list;
 
 void ide_init(void);
 void select_disk(struct disk* hd);

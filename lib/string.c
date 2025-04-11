@@ -63,7 +63,7 @@ int8_t strcmp(const char* a,const char* b)
 char* strchr(const char* str,const char ch)
 {
     ASSERT(str != NULL);
-    while(*str)
+    while(*str != 0)
     {
     	if(*str == ch)	return (char*)str;
     	++str;

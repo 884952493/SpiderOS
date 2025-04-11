@@ -1,10 +1,12 @@
 #ifndef __THREAD_THREAD_H
 #define __THREAD_THREAD_H
 #include "stdint.h"
+#include "global.h"
 #include "list.h"
 #include "../kernel/memory.h"
 
 #define PG_SIZE 4096
+#define MAX_FILES_OPEN_PER_PROC 8 
 typedef int16_t pid_t;
 extern struct list thread_ready_list,thread_all_list;
 
@@ -76,13 +78,17 @@ struct task_struct
     
     struct list_elem general_tag;                   //就绪队列中的连接节点
     struct list_elem all_list_tag;		      //总队列的连接节点
+    int32_t fd_table[MAX_FILES_OPEN_PER_PROC];      //文件描述符数组
     
     uint32_t* pgdir;				      //进程自己页表的虚拟地址 线程没有   
     struct virtual_addr userprog_vaddr;	      //用户进程的虚拟空间               
     struct mem_block_desc u_block_desc[DESC_CNT];   //内存块描述符
+    uint32_t cwd_inode_nr;			      //工作目录inode编号
+    int16_t  parent_pid;			      //父进程的pid编号
     uint32_t stack_magic;			      //越界检查  因为我们pcb上面的就是我们要用的栈了 到时候还要越界检查
 };
 
+pid_t allocate_pid(void);
 struct task_struct* running_thread(void);
 void kernel_thread(thread_func* function,void* func_arg);
 void thread_create(struct task_struct* pthread,thread_func function,void* func_arg);
@@ -95,5 +101,9 @@ void thread_block(enum task_status stat);
 void thread_unblock(struct task_struct* pthread);
 void idle(void);
 void thread_yield(void);
+pid_t fork_pid(void);
+void pad_print(char* buf,int32_t buf_len,void* ptr,char format);
+bool elem2thread_info(struct list_elem* pelem,int arg);
+void sys_ps(void);
 
 #endif

@@ -192,13 +192,13 @@ put_char:
    add ebx, 2
    loop .cls 
    mov bx,1920				  ;将光标值重置为1920,最后一行的首字符.
-
+   
 global set_cursor:
 set_cursor:   
 					  ;将光标设为bx值
 ;;;;;;; 1 先设置高8位 ;;;;;;;;
    mov dx, 0x03d4			  ;索引寄存器
-   mov al, 0x0e				  ;用于提供光标位置的高8位
+   mov al, 0x0e		          ;用于提供光标位置的高8位
    out dx, al
    mov dx, 0x03d5			  ;通过读写数据端口0x3d5来获得或设置光标位置 
    mov al, bh
@@ -214,3 +214,21 @@ set_cursor:
  .put_char_done: 
    popad
    ret
+
+                    
+global cls_screen: 
+cls_screen:                               ; 连着set_cursor
+   pushad                                ; 用户态不允许访问显存 只能由中断后进入内核态 故此为系统调用
+   mov ax,SELECTOR_VIDEO                 ; ax做中转
+   mov gs,ax                             ; 先放到gs里面 进入中断后再
+   
+   mov ebx,0
+   mov ecx,80*25                         ;清屏幕
+   
+ .cls:
+   mov word [gs:ebx],0x720		   ;黑底白字空格键
+   add ebx,2                              ;一次两字节
+   loop .cls        
+   mov ebx,0
+   jmp set_cursor
+  
