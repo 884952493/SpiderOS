@@ -48,7 +48,7 @@ SECTION MBR vstart=0x7c00 ;起始地址编译在0x7c00
     mov byte [gs:0x0E],'S' 
     mov byte [gs:0x0F],0xA4
     
-                   ; 思考一下 在输出完“Love 6OS后 按照书上的逻辑是要把磁盘读入 
+                   ; 思考一下 在输出完“SpiderOS后 按照书上的逻辑是要把磁盘读入 
                    ; 先把配置信息给送到寄存器中”
     
     		   ; 为什么要送到 eax中呢 因为IN OUT IO接口 
@@ -80,10 +80,10 @@ rd_disk_m_16:
     mov di,cx     ; !!! 备份cx
     
     mov dx,0x1F2  ; 0x1F2为Sector Count 端口号 送到dx寄存器中
-    mov al,cl     ; !!! 忘了只能由ax al传递数据
-    out dx,al     ; !!! 这里修改了 原out dx,cl
+    mov al,cl     
+    out dx,al    
     
-    mov eax,esi   ; !!!袄无! 原来备份是这个用 前面需要ax来传递数据 麻了
+    mov eax,esi   
     
 ;;;;;;;;;;;;;;;;;;;;;
 ;2 写入LBA 24位寄存器 确认扇区

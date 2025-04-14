@@ -108,7 +108,7 @@ char* buildin_cd(uint32_t argc,char** argv)
     return final_path;   
 }
 
-// ls内建函数 仅支持-l -h -h等于不支持 哈哈
+// ls内建函数 仅支持-l
 void buildin_ls(uint32_t argc,char** argv)
 {
     char* pathname = NULL;

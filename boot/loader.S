@@ -31,7 +31,7 @@ jmp loader_start                     		   	   ;下面存放数据段 构建gdt �
     		       
     ards_buf times 244 db 0                              ;buf  记录内存大小的缓冲区
     ards_nr dw 0					   ;nr 记录20字节结构体个数  计算了一下 4+2+4+244+2=256 刚好256字节
-    							   ;书籍作者有强迫症 哈哈 这里244的buf用不到那么多的 实属强迫症使然 哈哈
+    							   
     
     SELECTOR_CODE        equ (0X0001<<3) + TI_GDT + RPL0    ;16位寄存器 4位TI RPL状态 GDT剩下的选择子
     SELECTOR_DATA	  equ (0X0002<<3) + TI_GDT + RPL0
@@ -61,8 +61,8 @@ loader_start:
     xor edx,edx
 .find_max_mem_area:
     
-    mov eax,[ebx]						 ;我也不是很清楚为什么用内存上限来表示操作系统可用部分
-    add eax,[ebx+8]                                            ;既然作者这样用了 我们就这样用
+    mov eax,[ebx]						
+    add eax,[ebx+8]                                            
     add ebx,20    						 ;简单的排序
     cmp edx,eax
     jge .next_ards
@@ -72,7 +72,7 @@ loader_start:
     loop .find_max_mem_area
     jmp .mem_get_ok
     
-.e820_failed_so_try_e801:                                       ;地址段名字取的真的简单易懂 哈哈哈哈 
+.e820_failed_so_try_e801:                                      
     mov ax,0xe801
     int 0x15
     jc .e801_failed_so_try_88
@@ -191,15 +191,15 @@ setup_page:
     
  .create_pde: 
     mov eax,PAGE_DIR_TABLE_POS				  ;页目录项 起始位置
-    add eax,0x1000                                              ;页目录项刚好4k字节 add eax即得第一个页表项的地址
-                                                                ;接下来我们要做的是 把虚拟地址1M下和3G+1M 两部分的1M内存在页目录项中都映射到物理地址0-0XFFFFF
-    or  eax, PG_P | PG_RW_W | PG_US_U                           ;哦 悟了 哈哈哈 这里设置为PG_US_U 是因为init在用户进程 如果这里设置成US_S 这样子连进内核都进不去了
+    add eax,0x1000                                              
+                                                               
+    or  eax, PG_P | PG_RW_W | PG_US_U                           
      
-    mov [PAGE_DIR_TABLE_POS+0x0],eax                             ;页目录项偏移0字节与偏移0xc00 对应0x 一条页目录项对应2^22位4MB 偏移由前10位*4字节得到 可自己推算一下
+    mov [PAGE_DIR_TABLE_POS+0x0],eax                             
     mov [PAGE_DIR_TABLE_POS+0xc00],eax                        
     sub eax,0x1000      
     
-    mov [PAGE_DIR_TABLE_POS+4092],eax                           ;虚拟内存最后一个目录项 指向页目录表自身 书上写的是为了动态操纵页表 我也不是很清楚 反正有用 先放放
+    mov [PAGE_DIR_TABLE_POS+4092],eax                         
 
 ;这里就创建了一页页表    
     mov eax,PAGE_DIR_TABLE_POS
