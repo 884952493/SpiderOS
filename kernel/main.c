@@ -41,9 +41,9 @@ int main(void)
     sys_free(prog_buf);
     
     // cls_screen();
-    console_put_str("[SpiderOS@hutaotao /]:~$ ");
+    // cls_screen();
+    // console_put_str("[SpiderOS@hutaotao /]:~$ ");
     
-   
     while(1);
     return 0;
 }

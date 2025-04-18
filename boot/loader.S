@@ -42,7 +42,7 @@ loader_start:
     mov sp,LOADER_BASE_ADDR                                   ;先初始化了栈指针
     xor ebx,ebx                                               ;异或自己 即等于0
     mov ax,0                                       
-    mov es,ax                                                 ;心有不安 还是把es给初始化一下
+    mov es,ax                                                 ;es初始化
     mov di,ards_buf                                           ;di指向缓冲区位置
 .e820_mem_get_loop:
     mov eax,0x0000E820                                            ;每次都需要初始化
