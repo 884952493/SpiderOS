@@ -63,7 +63,7 @@ struct thread_stack
     
     void (*unused_retaddr);                         //占位数 在栈顶站住了返回地址的位置 因为是汇编ret 
     thread_func* function;                          //进入kernel_thread要调用的函数地址
-    void* func_arg;				      //参数指针
+    void* func_arg;				                    //参数指针
 };
 
 struct task_struct
@@ -71,21 +71,21 @@ struct task_struct
     uint32_t* self_kstack;                          //pcb中的 kernel_stack 内核栈
     pid_t pid;
     enum task_status status;                        //线程状态
-    uint8_t priority;				      //特权级
-    uint8_t ticks;				      //在cpu 运行的滴答数 看ticks 来判断是否用完了时间片
+    uint8_t priority;				                //特权级
+    uint8_t ticks;				                    //在cpu 运行的滴答数 看ticks 来判断是否用完了时间片
     uint32_t elapsed_ticks;                         //一共执行了多久
     char name[16];
     
     struct list_elem general_tag;                   //就绪队列中的连接节点
-    struct list_elem all_list_tag;		      //总队列的连接节点
+    struct list_elem all_list_tag;		            //总队列的连接节点
     int32_t fd_table[MAX_FILES_OPEN_PER_PROC];      //文件描述符数组
     
-    uint32_t* pgdir;				      //进程自己页表的虚拟地址 线程没有   
-    struct virtual_addr userprog_vaddr;	      //用户进程的虚拟空间               
+    uint32_t* pgdir;				                //进程自己页表的虚拟地址 线程没有   
+    struct virtual_addr userprog_vaddr;	            //用户进程的虚拟空间               
     struct mem_block_desc u_block_desc[DESC_CNT];   //内存块描述符
-    uint32_t cwd_inode_nr;			      //工作目录inode编号
-    int16_t  parent_pid;			      //父进程的pid编号
-    uint32_t stack_magic;			      //越界检查  因为我们pcb上面的就是我们要用的栈了 到时候还要越界检查
+    uint32_t cwd_inode_nr;			                //工作目录inode编号
+    int16_t  parent_pid;			                //父进程的pid编号
+    uint32_t stack_magic;			                //越界检查  因为我们pcb上面的就是我们要用的栈了 到时候还要越界检查
 };
 
 pid_t allocate_pid(void);

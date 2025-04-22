@@ -6,8 +6,8 @@ SECTION MBR vstart=0x7c00 ;起始地址编译在0x7c00
     mov ss,ax
     mov fs,ax
     mov sp,0x7c00
-    mov ax,0xb800  ; ax为文本信号起始区
-    mov gs,ax      ; gs = ax 充当段基址的作用
+    mov ax,0xb800  ; ax为文本信号起始区 0xb800是显存的起始段地址
+    mov gs,ax      ; gs = ax 充当段基址的作用，通过设置gs可以直接访问显存
     
     		   ; ah = 0x06 al = 0x00 想要调用int 0x06的BIOS提供的中断对应的函数 
     		   ; 即向上移动即完成清屏功能
@@ -23,7 +23,6 @@ SECTION MBR vstart=0x7c00 ;起始地址编译在0x7c00
     		   ;新增功能 直接操作显存部分
     		   ;低位字节储存ascii字符 小端储存内存顺序相反
     mov byte [gs:0x00],'S' 
-    
     		   ;背景储存在第二个字节 含字符与背景属性
     mov byte [gs:0x01],0xA4    
     
@@ -48,20 +47,15 @@ SECTION MBR vstart=0x7c00 ;起始地址编译在0x7c00
     mov byte [gs:0x0E],'S' 
     mov byte [gs:0x0F],0xA4
     
-                   ; 思考一下 在输出完“SpiderOS后 按照书上的逻辑是要把磁盘读入 
-                   ; 先把配置信息给送到寄存器中”
+    mov eax,LOADER_START_SECTOR  ;读取起始扇区号 ，由于第一个扇区分配给MBR，Loader从第3个扇区开始加载
     
-    		   ; 为什么要送到 eax中呢 因为IN OUT IO接口 
-    		   ; 规定的就是dx里面存放的是端口号 ax是需要或者输送的信息
-    mov eax,LOADER_START_SECTOR    
-    
-    mov bx,LOADER_BASE_ADDR ;把要目标内存位置放进去 bx常作地址储存
+    mov bx,LOADER_BASE_ADDR ;把要目标内存位置放进去 bx常作地址储存 0x600
     
     mov cx,4;读取磁盘数 cx常作计数
     
     call rd_disk_m_16
 
-    jmp LOADER_BASE_ADDR ; 直接当跳跳熊 开跳0x600
+    jmp LOADER_BASE_ADDR ; 跳转到0x600
 ;------------------------------------------------------------------------
 ;读取第二块硬盘
 rd_disk_m_16:

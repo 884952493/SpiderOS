@@ -32,7 +32,7 @@ void intr_timer_handler(void)
     struct task_struct* cur_thread = running_thread();   //得到pcb指针
     ASSERT(cur_thread->stack_magic == 0x23333333);	       //检测栈是否溢出
     
-    ++ticks;
+    ticks++;
     ++cur_thread->elapsed_ticks;
     if(!cur_thread->ticks)
     {
@@ -66,4 +66,9 @@ void mtime_sleep(uint32_t m_seconds)
     uint32_t sleep_ticks = DIV_ROUND_UP(m_seconds,mil_second_per_init);
     ASSERT(sleep_ticks > 0);
     ticks_to_sleep(sleep_ticks);
+}
+void delay(uint32_t n_seconds) {
+    uint32_t start_tick = ticks;
+    uint32_t target_ticks = n_seconds * IRQ0_FREQUENCY;
+    while (ticks - start_tick < target_ticks);
 }

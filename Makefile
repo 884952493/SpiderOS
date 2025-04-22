@@ -174,7 +174,7 @@ mk_dir:
 
 ############## 创建虚拟硬盘 ##############
 hd:
-	rm -f ./hd60M.img
+	rm -f ./hd60M.img 
 	dd if=/dev/zero of=hd60M.img bs=1M count=60
 	nasm -I include/ -o boot/mbr.bin boot/mbr.S
 	dd if=boot/mbr.bin of=hd60M.img conv=notrunc

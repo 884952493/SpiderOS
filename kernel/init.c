@@ -12,7 +12,7 @@
 
 /*负责初始化所有模块 */
 void init_all() {
-   put_str("init_all\n");
+   put_str("\n********Loader done!!Welcome to kernel!********\n");
    idt_init();	     // 初始化中断
    mem_init();
    timer_init();
@@ -23,4 +23,5 @@ void init_all() {
    syscall_init();
    ide_init();
    filesys_init();
+   put_str("\n********init done!!Welcome to SpiderOS!********\n");
 }

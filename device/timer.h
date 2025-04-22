@@ -6,5 +6,6 @@ void intr_timer_handler(void);
 void timer_init(void);
 void mtime_sleep(uint32_t m_seconds);
 void ticks_to_sleep(uint32_t sleep_ticks);
+void delay(uint32_t n_seconds);
 #endif
 

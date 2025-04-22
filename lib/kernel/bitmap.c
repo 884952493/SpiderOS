@@ -35,26 +35,15 @@ bool bitmap_scan_test(struct bitmap* btmp, uint32_t bit_idx)  //一个8位的数
     }
 
     bool result = (btmp->bits[byte_idx] & (BITMAP_MASK << byte_pos));
-    // put_str("[+] bitmap_scan_test: Checking bit ");
-    // put_int(bit_idx);
-    // put_str(" result=");
-    // put_int(result);
-    // put_char('\n');
-    return result;
+
 }
 
 int bitmap_scan(struct bitmap* btmp, uint32_t cnt)
 {
-    ASSERT(cnt >= 1);
     if (btmp == NULL || btmp->bits == NULL) {
-        put_str("[-] bitmap_scan: NULL pointer exception\n");
+        printf("\n[-] "__FILE__" [Line: %d][func:%s]: btmp is invalid!\n", __LINE__, __func__);
         return -1;
     }
-
-    // put_str("[+] bitmap_scan: Start scanning bitmap, requested continuous free bits = ");
-    // put_int(cnt);
-    // put_char('\n');
-
     uint32_t first_find_idx = 0;
     while (first_find_idx < btmp->btmp_bytes_len && btmp->bits[first_find_idx] == 0xff)
         ++first_find_idx;

@@ -1,8 +1,8 @@
 %include "boot.inc"
-SECTION loader vstart=LOADER_BASE_ADDR
+SECTION loader vstart=LOADER_BASE_ADDR         ;0x600
 LOADER_STACK_TOP equ LOADER_BASE_ADDR 		   ;是个程序都需要有栈区 我设置的0x600以下的区域到0x500区域都是可用空间 况且也用不到
 jmp loader_start                     		   	   ;下面存放数据段 构建gdt 跳跃到下面的代码区 
-				       		   ;对汇编再复习 db define byte,dw define word,dd define dword
+
     GDT_BASE        : dd 0x00000000          		   ;刚开始的段选择子0不能使用 故用两个双字 来填充
    		       dd 0x00000000 
     
@@ -22,7 +22,7 @@ jmp loader_start                     		   	   ;下面存放数据段 构建gdt �
     times 5 db 0                                         ;为了凑整数 0x800 导致前面少了三个
     
     total_mem_bytes  dd 0
-    	               			           ;在此前经过计算程序内偏移量为0x200 我算了算 60*8+4*8=512 刚好是 0x200 说这里的之后还会用到
+    	               			           ;在此前经过计算程序内偏移量为0x200  60*8+4*8=512 刚好是 0x200 说这里的之后还会用到
     							   ;我们刚开始程序设置的地址位置为 0x600 那这就是0x800
  
     

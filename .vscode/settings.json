@@ -20,6 +20,9 @@
         "process.h": "c",
         "thread.h": "c",
         "stdio.h": "c",
-        "stdio-kernel.h": "c"
+        "stdio-kernel.h": "c",
+        "keyboard.h": "c",
+        "shell.h": "c",
+        "syscall-init.h": "c"
     }
 }
