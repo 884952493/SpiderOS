@@ -96,7 +96,6 @@ int32_t cmd_parse(char* cmd_str,char** argv,char token)
         
         while(*next && *next != token)  //要不结束了为0 或者到了分割符号
             ++next;
-            
         if(*next)
             *(next++) = 0; //到最后就是设置字符串的末尾0 分割符号位置刚好处理为0 这样字符串有结束末尾了
                         //最后一个参数后面自然有'\0'
