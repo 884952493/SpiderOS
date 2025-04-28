@@ -29,7 +29,8 @@ struct pool kernel_pool ,user_pool; //生成内核内存池 和 用户内存池
 struct virtual_addr kernel_vaddr;    //内核虚拟内存管理池
 void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt)
 {
-    int vaddr_start = 0, bit_idx_start = -1;
+    int vaddr_start = 0;
+    int bit_idx_start = -1;
     uint32_t cnt = 0;
 
     if (pf == PF_KERNEL) {
@@ -41,8 +42,7 @@ void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt)
         while (cnt < pg_cnt)
             bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx_start + (cnt++), 1);
         vaddr_start = kernel_vaddr.vaddr_start + bit_idx_start * PG_SIZE;
-    } 
-    else {
+    } else {
         struct task_struct* cur = running_thread();
         bit_idx_start = bitmap_scan(&cur->userprog_vaddr.vaddr_bitmap, pg_cnt);
         if (bit_idx_start == -1) {
