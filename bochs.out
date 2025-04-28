@@ -31,7 +31,7 @@
 00000000000i[      ]   SB16 support: no
 00000000000i[      ]   USB support: no
 00000000000i[      ]   VGA extension support: vbe
-00000000000i[MEM0  ] allocated memory at 0x7cfb10000010. after alignment, vector=0x7cfb10001000
+00000000000i[MEM0  ] allocated memory at 0x7a847d000010. after alignment, vector=0x7a847d001000
 00000000000i[MEM0  ] 32.00MB
 00000000000i[MEM0  ] mem block size = 0x00100000, blocks=32
 00000000000i[MEM0  ] rom at 0xfffe0000/131072 ('/usr/local/share/bochs/BIOS-bochs-latest')
@@ -41,7 +41,7 @@
 00000000000i[DEV   ] PIIX3 PCI-to-ISA bridge present at device 1, function 0
 00000000000i[PLUGIN] init_dev of 'cmos' plugin device by virtual method
 00000000000i[CMOS  ] Using local time for initial clock
-00000000000i[CMOS  ] Setting initial clock to: Tue Apr 22 15:04:06 2025 (time0=1745305446)
+00000000000i[CMOS  ] Setting initial clock to: Sun Apr 27 11:46:50 2025 (time0=1745725610)
 00000000000i[PLUGIN] init_dev of 'dma' plugin device by virtual method
 00000000000i[DMA   ] channel 4 used by cascade
 00000000000i[PLUGIN] init_dev of 'pic' plugin device by virtual method
@@ -179,27 +179,27 @@
 00001876695i[BIOS  ] ata0-0: PCHS=121/16/63 translation=none LCHS=121/16/63
 00001930728i[BIOS  ] ata0-1: PCHS=162/16/63 translation=none LCHS=162/16/63
 00014109267i[BIOS  ] Booting from 0000:7c00
-00038169416i[XGUI  ] charmap update. Font Height is 16
-23435884000i[      ] cpu loop quit, shutting down simulator
-23435884000i[CPU0  ] CPU is in protected mode (active)
-23435884000i[CPU0  ] CS.mode = 32 bit
-23435884000i[CPU0  ] SS.mode = 32 bit
-23435884000i[CPU0  ] EFER   = 0x00000000
-23435884000i[CPU0  ] | EAX=00000004  EBX=00000000  ECX=00000000  EDX=00000000
-23435884000i[CPU0  ] | ESP=bfffffd4  EBP=bffffffc  ESI=00000000  EDI=00000000
-23435884000i[CPU0  ] | IOPL=0 id vip vif ac vm rf nt of df IF tf sf zf af pf cf
-23435884000i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
-23435884000i[CPU0  ] |  CS:002b( 0005| 0|  3) 00000000 ffffffff 1 1
-23435884000i[CPU0  ] |  DS:0033( 0006| 0|  3) 00000000 ffffffff 1 1
-23435884000i[CPU0  ] |  SS:0033( 0006| 0|  3) 00000000 ffffffff 1 1
-23435884000i[CPU0  ] |  ES:0033( 0006| 0|  3) 00000000 ffffffff 1 1
-23435884000i[CPU0  ] |  FS:0033( 0006| 0|  3) 00000000 ffffffff 1 1
-23435884000i[CPU0  ] |  GS:0000( 0000| 0|  0) 00000000 00000000 0 0
-23435884000i[CPU0  ] | EIP=c0001541 (c0001541)
-23435884000i[CPU0  ] | CR0=0xe0000011 CR2=0x00000000
-23435884000i[CPU0  ] | CR3=0x00218000 CR4=0x00000000
-23435884000i[CPU0  ] 0xc0001541>> jmp .-2 (0xc0001541) : EBFE
-23435884000i[CMOS  ] Last time is 1745311304 (Tue Apr 22 16:41:44 2025)
-23435884000i[XGUI  ] Exit
-23435884000i[      ] restoring default signal behavior
-23435884000i[SIM   ] quit_sim called with exit code 1
+00033394028i[XGUI  ] charmap update. Font Height is 16
+00278256000i[      ] cpu loop quit, shutting down simulator
+00278256000i[CPU0  ] CPU is in protected mode (active)
+00278256000i[CPU0  ] CS.mode = 32 bit
+00278256000i[CPU0  ] SS.mode = 32 bit
+00278256000i[CPU0  ] EFER   = 0x00000000
+00278256000i[CPU0  ] | EAX=00000004  EBX=00000000  ECX=00000000  EDX=00000000
+00278256000i[CPU0  ] | ESP=bfffffd4  EBP=bffffffc  ESI=00000000  EDI=00000000
+00278256000i[CPU0  ] | IOPL=0 id vip vif ac vm rf nt of df IF tf sf zf af pf cf
+00278256000i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00278256000i[CPU0  ] |  CS:002b( 0005| 0|  3) 00000000 ffffffff 1 1
+00278256000i[CPU0  ] |  DS:0033( 0006| 0|  3) 00000000 ffffffff 1 1
+00278256000i[CPU0  ] |  SS:0033( 0006| 0|  3) 00000000 ffffffff 1 1
+00278256000i[CPU0  ] |  ES:0033( 0006| 0|  3) 00000000 ffffffff 1 1
+00278256000i[CPU0  ] |  FS:0033( 0006| 0|  3) 00000000 ffffffff 1 1
+00278256000i[CPU0  ] |  GS:0000( 0000| 0|  0) 00000000 00000000 0 0
+00278256000i[CPU0  ] | EIP=c0001541 (c0001541)
+00278256000i[CPU0  ] | CR0=0xe0000011 CR2=0x00000000
+00278256000i[CPU0  ] | CR3=0x00218000 CR4=0x00000000
+00278256000i[CPU0  ] 0xc0001541>> jmp .-2 (0xc0001541) : EBFE
+00278256000i[CMOS  ] Last time is 1745725679 (Sun Apr 27 11:47:59 2025)
+00278256000i[XGUI  ] Exit
+00278256000i[      ] restoring default signal behavior
+00278256000i[SIM   ] quit_sim called with exit code 1
