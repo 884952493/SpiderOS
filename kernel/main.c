@@ -18,26 +18,16 @@
 #include "../fs/file.h"
 #include "../shell/shell.h"
 #include "global.h"
-int main(void) {
-    put_str("I am kernel\n");
-    init_all();
-    intr_enable();
+// int main(void) {
+//     put_str("I am kernel\n");
+//     init_all();
+//     intr_enable();
     
-    console_put_str("[SpiderOS@hutaotao /]:~$ ");
+//     console_put_str("[SpiderOS@hutaotao /]:~$ ");
     
-    while(1);
-    return 0;
-}
-
-void init(void)
-{
-    uint32_t ret_pid = fork();
-    if(ret_pid)
-        while(1);
-    else
-        my_shell();
-    PANIC("init: should not be here");
-}
+//     while(1);
+//     return 0;
+// }
 
 //测试用例1：内存管理功能验证
 int main(void) 
@@ -154,3 +144,12 @@ put_str("[+] userprog_vaddr bitmap init success!\n");
     // }
     // put_str("[+] File system functionality testing completed\n");
     // }
+    void init(void)
+{
+    uint32_t ret_pid = fork();
+    if(ret_pid)
+        while(1);
+    else
+        my_shell();
+    PANIC("init: should not be here");
+}
