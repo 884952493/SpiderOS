@@ -30,77 +30,61 @@
 // }
 
 //测试用例1：内存管理功能验证
+// int main(void) 
+// {
+// init_all();
+// intr_enable();
+// void* addr1 = get_kernel_pages(3);
+// put_str("kernel malloc addr1: ");
+// put_int((uint32_t)addr1);
+// put_char('\n');
+// user_mem_test();
+// void* addr2 = get_user_pages(1);
+// put_str("user malloc addr2: ");
+// put_int((uint32_t)addr2);
+// put_char('\n');
+
+// while(1);
+// return 0;
+// }
+// void user_mem_test() {
+// struct task_struct* cur = running_thread();
+// cur->userprog_vaddr.vaddr_start = USER_VADDR_START;
+// uint32_t bitmap_pg_cnt = DIV_ROUND_UP((0xc0000000 - USER_VADDR_START) / PG_SIZE / 8, PG_SIZE);
+// cur->userprog_vaddr.vaddr_bitmap.bits = get_kernel_pages(bitmap_pg_cnt);
+// cur->userprog_vaddr.vaddr_bitmap.btmp_bytes_len = (0xc0000000 - USER_VADDR_START) / PG_SIZE / 8;
+// bitmap_init(&cur->userprog_vaddr.vaddr_bitmap);
+// put_str("[+] userprog_vaddr bitmap init success!\n");
+// }
+
+//测试用例2：线程与进程调度机制验证
+void thread_a(void* arg);
+void thread_b(void* arg);
 int main(void) 
 {
 init_all();
 intr_enable();
-void* addr1 = get_kernel_pages(3);
-put_str("kernel malloc addr1: ");
-put_int((uint32_t)addr1);
-put_char('\n');
-user_mem_test();
-void* addr2 = get_user_pages(1);
-put_str("user malloc addr2: ");
-put_int((uint32_t)addr2);
-put_char('\n');
-
-while(1);
+thread_start("thread_a", 31, thread_a, NULL);
+thread_start("thread_b", 31, thread_b, NULL);
+while (1) {
+put_str("Main thread is running\n");
+}
 return 0;
 }
-void user_mem_test() {
-struct task_struct* cur = running_thread();
-cur->userprog_vaddr.vaddr_start = USER_VADDR_START;
-uint32_t bitmap_pg_cnt = DIV_ROUND_UP((0xc0000000 - USER_VADDR_START) / PG_SIZE / 8, PG_SIZE);
-cur->userprog_vaddr.vaddr_bitmap.bits = get_kernel_pages(bitmap_pg_cnt);
-cur->userprog_vaddr.vaddr_bitmap.btmp_bytes_len = (0xc0000000 - USER_VADDR_START) / PG_SIZE / 8;
-bitmap_init(&cur->userprog_vaddr.vaddr_bitmap);
-put_str("[+] userprog_vaddr bitmap init success!\n");
+
+void thread_a(void* arg) {
+    while (1) {
+    put_str("Thread A is running\n");
+    }
+    }
+// 测试用线程B
+void thread_b(void* arg) {
+while (1) {
+put_str("Thread B is running\n");
+}
 }
 
-//测试用例2：线程与进程调度机制验证
-// void thread_a(void* arg);
-// void thread_b(void* arg);
-// int main(void) 
-// {
-// init_all();
-// intr_enable();
-// thread_start("thread_a", 31, thread_a, NULL);
-// thread_start("thread_b", 31, thread_b, NULL);
-// while (1) {
-// put_str("Main thread is running\n");
-// }
-// return 0;
-// }
-// void init(void)
-// {
-// uint32_t ret_pid = fork();
-// if(ret_pid)
-// while(1);
-// else
-// my_shell();
-// PANIC("init: should not be here");
-// }
-// void thread_a(void* arg) {
-//     while (1) {
-//     put_str("Thread A is running\n");
-//     }
-//     }
-//     // 测试用线程B
-//     void thread_b(void* arg) {
-//     while (1) {
-//     put_str("Thread B is running\n");
-//     }
-//     }
-// int main(void) 
-// {
-// init_all();
-// intr_enable();
-// while (1) {
-// delay(2000);
-// put_str("Main thread is running,Test input\n");
-// }
-// return 0;
-// }
+
 // void file_system_test() {
 //     put_str("\n[+] begin test filesystem...\n");
     
@@ -144,7 +128,7 @@ put_str("[+] userprog_vaddr bitmap init success!\n");
     // }
     // put_str("[+] File system functionality testing completed\n");
     // }
-    void init(void)
+void init(void)
 {
     uint32_t ret_pid = fork();
     if(ret_pid)
