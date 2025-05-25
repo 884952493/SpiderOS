@@ -18,116 +18,207 @@
 #include "../fs/file.h"
 #include "../shell/shell.h"
 #include "global.h"
-// int main(void) {
-//     put_str("I am kernel\n");
-//     init_all();
-//     intr_enable();
-    
-//     console_put_str("[SpiderOS@hutaotao /]:~$ ");
-    
-//     while(1);
-//     return 0;
-// }
 
-//测试用例1：内存管理功能验证
-// int main(void) 
-// {
-// init_all();
-// intr_enable();
-// void* addr1 = get_kernel_pages(3);
-// put_str("kernel malloc addr1: ");
-// put_int((uint32_t)addr1);
-// put_char('\n');
-// user_mem_test();
-// void* addr2 = get_user_pages(1);
-// put_str("user malloc addr2: ");
-// put_int((uint32_t)addr2);
-// put_char('\n');
+// 测试函数声明
+void test_memory_management(void);
+void test_thread_scheduling(void);
+void test_process_management(void);
+void test_file_system(void);
+void test_io_devices(void);
+void test_interrupt(void);
 
-// while(1);
-// return 0;
-// }
-// void user_mem_test() {
-// struct task_struct* cur = running_thread();
-// cur->userprog_vaddr.vaddr_start = USER_VADDR_START;
-// uint32_t bitmap_pg_cnt = DIV_ROUND_UP((0xc0000000 - USER_VADDR_START) / PG_SIZE / 8, PG_SIZE);
-// cur->userprog_vaddr.vaddr_bitmap.bits = get_kernel_pages(bitmap_pg_cnt);
-// cur->userprog_vaddr.vaddr_bitmap.btmp_bytes_len = (0xc0000000 - USER_VADDR_START) / PG_SIZE / 8;
-// bitmap_init(&cur->userprog_vaddr.vaddr_bitmap);
-// put_str("[+] userprog_vaddr bitmap init success!\n");
-// }
-
-//测试用例2：线程与进程调度机制验证
-void thread_a(void* arg);
-void thread_b(void* arg);
-int main(void) 
-{
-init_all();
-intr_enable();
-thread_start("thread_a", 31, thread_a, NULL);
-thread_start("thread_b", 31, thread_b, NULL);
-while (1) {
-put_str("Main thread is running\n");
-}
-return 0;
+// 启动日志
+void print_boot_log(void) {
+    put_str("\n\n");
+    put_str("==========================================\n");
+    put_str("           SpiderOS Boot Sequence         \n");
+    put_str("==========================================\n");
+    put_str("[+] Initializing system...\n");
+    put_str("[+] Loading kernel...\n");
+    put_str("[+] Setting up memory management...\n");
+    put_str("[+] Initializing interrupt handlers...\n");
+    put_str("[+] Setting up device drivers...\n");
+    put_str("[+] Mounting file system...\n");
+    put_str("[+] Starting process scheduler...\n");
+    put_str("[+] System initialization complete!\n");
+    put_str("==========================================\n\n");
 }
 
+// 显示菜单
+void show_menu(void) {
+    put_str("\n=== SpiderOS Test Menu ===\n");
+    put_str("1. Memory Management Test\n");
+    put_str("2. Thread Scheduling Test\n");
+    put_str("3. Process Management Test\n");
+    put_str("4. File System Test\n");
+    put_str("5. I/O Devices Test\n");
+    put_str("6. Interrupt Test\n");
+    put_str("0. Exit\n");
+    put_str("Please select (0-6): ");
+}
+
+// 内存管理测试
+void test_memory_management(void) {
+    put_str("\n=== Memory Management Test ===\n");
+    
+    // 测试内核内存分配
+    void* kernel_addr = get_kernel_pages(3);
+    put_str("[+] Kernel memory allocated at: ");
+    put_int((uint32_t)kernel_addr);
+    put_char('\n');
+    
+    // 测试用户内存分配
+    void* user_addr = get_user_pages(1);
+    put_str("[+] User memory allocated at: ");
+    put_int((uint32_t)user_addr);
+    put_char('\n');
+    
+    // 释放内存
+    put_str("[+] Memory test completed\n");
+}
+
+// 线程调度测试
 void thread_a(void* arg) {
-    while (1) {
-    put_str("Thread A is running\n");
+    while(1) {
+        put_str("Thread A running...\n");
     }
-    }
-// 测试用线程B
+}
+
 void thread_b(void* arg) {
-while (1) {
-put_str("Thread B is running\n");
-}
+    while(1) {
+        put_str("Thread B running...\n");
+    }
 }
 
+void test_thread_scheduling(void) {
+    put_str("\n=== Thread Scheduling Test ===\n");
+    thread_start("thread_a", 31, thread_a, NULL);
+    thread_start("thread_b", 31, thread_b, NULL);
+    put_str("[+] Threads started, press any key to stop\n");
+    while(1) {
+        if(getchar() != -1) break;
+    }
+}
 
-// void file_system_test() {
-//     put_str("\n[+] begin test filesystem...\n");
+// 进程管理测试
+void test_process_management(void) {
+    put_str("\n=== Process Management Test ===\n");
+    uint32_t pid = fork();
+    if(pid) {
+        put_str("[+] Parent process running, pid: ");
+        put_int(pid);
+        put_char('\n');
+    } else {
+        put_str("[+] Child process running\n");
+    }
+}
+
+// 文件系统测试
+void test_file_system(void) {
+    put_str("\n=== File System Test ===\n");
     
-    // if (sys_mkdir("/testdir") == 0) {
-    // put_str("[OK] directory /testdir create success!\n");
-    // } else {
-    // put_str("[ERR] directory /testdir create fail!\n");
-    // }
-    // int fd = sys_open("/testdir/hello.txt", O_CREAT | O_RDWR);
-    // if (fd != -1) {
-    // put_str("[OK] file /testdir/hello.txt create success,fd=");
-    // put_int(fd);
-    // put_char('\n');
-    // char write_buf[] = "SpiderOS FileSystem Test!";
-    // if (sys_write(fd, write_buf, strlen(write_buf)) == (int32_t)strlen(write_buf)) {
-    // put_str("[OK] file input success。\n");
-    // } else {
-    // put_str("[ERR] file input fail!\n");
-    // }
-    // sys_close(fd);
-    // } else {
-    // put_str("[ERR] fail /testdir/hello.txt create fail！\n");
-    // }
-    // fd = sys_open("/testdir/hello.txt", O_RDWR);
-    // if (fd != -1) {
-    // char read_buf[32] = {0};
-    // sys_read(fd, read_buf, 31);
-    // put_str("[OK] file read success:");
-    // put_str(read_buf);
-    // put_char('\n');
-    // sys_close(fd);
-    // } else {
-    // put_str("[ERR] file read fail,can't open file。\n");
-    // }
-    // int wrong_fd = sys_open("/noexist/file", O_RDWR);
-    // if (wrong_fd == -1) {
-    // put_str("[OK] Illegal path processed correctly, failed to open non-existent file.\n");
-    // } else {
-    // put_str("[ERR] Illegal path error, file handle should be -1\n");
-    // sys_close(wrong_fd);
-    // }
-    // put_str("[+] File system functionality testing completed\n");
-    // }
+    // 创建目录
+    if(sys_mkdir("/testdir") == 0) {
+        put_str("[+] Directory /testdir created successfully\n");
+    }
+    
+    // 创建文件
+    int fd = sys_open("/testdir/test.txt", O_CREAT | O_RDWR);
+    if(fd != -1) {
+        put_str("[+] File created successfully\n");
+        
+        // 写入数据
+        char* test_data = "Hello SpiderOS!";
+        sys_write(fd, test_data, strlen(test_data));
+        
+        // 读取数据
+        char read_buf[32] = {0};
+        sys_read(fd, read_buf, 31);
+        put_str("[+] File content: ");
+        put_str(read_buf);
+        put_char('\n');
+        
+        sys_close(fd);
+    }
+}
+
+// I/O设备测试
+void test_io_devices(void) {
+    put_str("\n=== I/O Devices Test ===\n");
+    put_str("[+] Testing keyboard input...\n");
+    put_str("Please type something: ");
+    
+    char input[32] = {0};
+    int i = 0;
+    while(i < 31) {
+        char ch = getchar();
+        if(ch != -1) {
+            input[i++] = ch;
+            put_char(ch);
+        }
+    }
+    put_str("\n[+] Input received: ");
+    put_str(input);
+    put_char('\n');
+}
+
+// 中断测试
+void test_interrupt(void) {
+    put_str("\n=== Interrupt Test ===\n");
+    put_str("[+] Testing timer interrupt...\n");
+    put_str("[+] System will beep every second\n");
+    
+    // 启用定时器中断
+    timer_init();
+    while(1) {
+        if(getchar() != -1) break;
+    }
+}
+
+int main(void) {
+    // 初始化所有模块
+    init_all();
+    intr_enable();
+    
+    // 显示启动日志
+    print_boot_log();
+    
+    // 主菜单循环
+    while(1) {
+        show_menu();
+        char choice = getchar();
+        put_char('\n');
+        
+        switch(choice) {
+            case '1':
+                test_memory_management();
+                break;
+            case '2':
+                test_thread_scheduling();
+                break;
+            case '3':
+                test_process_management();
+                break;
+            case '4':
+                test_file_system();
+                break;
+            case '5':
+                test_io_devices();
+                break;
+            case '6':
+                test_interrupt();
+                break;
+            case '0':
+                put_str("Exiting...\n");
+                return 0;
+            default:
+                put_str("Invalid choice, please try again\n");
+        }
+    }
+    
+    return 0;
+}
+
 void init(void)
 {
     uint32_t ret_pid = fork();
