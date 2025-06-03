@@ -27,6 +27,14 @@ void test_file_system(void);
 void test_io_devices(void);
 void test_interrupt(void);
 
+// 检查是否按下Ctrl+C
+bool check_ctrl_c(void) {
+    enum intr_status old_status = intr_disable();
+    char ch = ioq_getchar(&ioqueue);
+    intr_set_status(old_status);
+    return (ch == 3); // Ctrl+C的ASCII码是3
+}
+
 // 启动日志
 void print_boot_log(void) {
     put_str("\n\n");
@@ -92,17 +100,23 @@ void thread_b(void* arg) {
 
 void test_thread_scheduling(void) {
     put_str("\n=== Thread Scheduling Test ===\n");
+    put_str("Press Ctrl+C to return to menu\n");
     thread_start("thread_a", 31, thread_a, NULL);
     thread_start("thread_b", 31, thread_b, NULL);
-    put_str("[+] Threads started, press any key to stop\n");
+    put_str("[+] Threads started\n");
     while(1) {
-        if(getchar() != -1) break;
+        if(check_ctrl_c()) {
+            put_str("\nReturning to menu...\n");
+            return;
+        }
+        if(ioq_getchar(&ioqueue) != -1) break;
     }
 }
 
 // 进程管理测试
 void test_process_management(void) {
     put_str("\n=== Process Management Test ===\n");
+    put_str("Press Ctrl+C to return to menu\n");
     uint32_t pid = fork();
     if(pid) {
         put_str("[+] Parent process running, pid: ");
@@ -111,11 +125,18 @@ void test_process_management(void) {
     } else {
         put_str("[+] Child process running\n");
     }
+    while(1) {
+        if(check_ctrl_c()) {
+            put_str("\nReturning to menu...\n");
+            return;
+        }
+    }
 }
 
 // 文件系统测试
 void test_file_system(void) {
     put_str("\n=== File System Test ===\n");
+    put_str("Press Ctrl+C to return to menu\n");
     
     // 创建目录
     if(sys_mkdir("/testdir") == 0) {
@@ -140,18 +161,32 @@ void test_file_system(void) {
         
         sys_close(fd);
     }
+    
+    while(1) {
+        if(check_ctrl_c()) {
+            put_str("\nReturning to menu...\n");
+            return;
+        }
+    }
 }
 
 // I/O设备测试
 void test_io_devices(void) {
     put_str("\n=== I/O Devices Test ===\n");
+    put_str("Press Ctrl+C to return to menu\n");
     put_str("[+] Testing keyboard input...\n");
     put_str("Please type something: ");
     
     char input[32] = {0};
     int i = 0;
     while(i < 31) {
-        char ch = getchar();
+        if(check_ctrl_c()) {
+            put_str("\nReturning to menu...\n");
+            return;
+        }
+        enum intr_status old_status = intr_disable();
+        char ch = ioq_getchar(&ioqueue);
+        intr_set_status(old_status);
         if(ch != -1) {
             input[i++] = ch;
             put_char(ch);
@@ -160,18 +195,35 @@ void test_io_devices(void) {
     put_str("\n[+] Input received: ");
     put_str(input);
     put_char('\n');
+    
+    while(1) {
+        if(check_ctrl_c()) {
+            put_str("\nReturning to menu...\n");
+            return;
+        }
+    }
 }
 
 // 中断测试
 void test_interrupt(void) {
     put_str("\n=== Interrupt Test ===\n");
+    put_str("Press Ctrl+C to return to menu\n");
     put_str("[+] Testing timer interrupt...\n");
     put_str("[+] System will beep every second\n");
     
     // 启用定时器中断
     timer_init();
     while(1) {
-        if(getchar() != -1) break;
+        if(check_ctrl_c()) {
+            put_str("\nReturning to menu...\n");
+            return;
+        }
+        enum intr_status old_status = intr_disable();
+        if(ioq_getchar(&ioqueue) != -1) {
+            intr_set_status(old_status);
+            break;
+        }
+        intr_set_status(old_status);
     }
 }
 
@@ -186,7 +238,7 @@ int main(void) {
     // 主菜单循环
     while(1) {
         show_menu();
-        char choice = getchar();
+        char choice = ioq_getchar(&ioqueue);
         put_char('\n');
         
         switch(choice) {
